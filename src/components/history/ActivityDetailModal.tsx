@@ -87,8 +87,8 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
 
     return (
         <div className={clsx(
-            "fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none",
-            activity ? "pointer-events-auto" : ""
+            "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+            activity ? "pointer-events-auto" : "pointer-events-none"
         )}>
             {/* Backdrop - Click to Close */}
             <div

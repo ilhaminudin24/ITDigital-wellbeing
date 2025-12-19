@@ -2,6 +2,8 @@
 
 import React from "react";
 
+
+
 export default function ReportPage() {
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">

@@ -118,6 +118,7 @@ export default function LoginPage() {
                                     <input
                                         className="peer w-full rounded-full border border-gray-300 bg-gray-50 px-5 py-3.5 text-base text-slate-900 placeholder-transparent focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                         id="username"
+                                        autoComplete="username"
                                         type="text"
                                         placeholder="Enter your ID or Email"
                                     />
@@ -140,6 +141,7 @@ export default function LoginPage() {
                                     <input
                                         className="peer w-full rounded-full border border-gray-300 bg-gray-50 px-5 py-3.5 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                         id="password"
+                                        autoComplete="current-password"
                                         type="password"
                                         placeholder="Enter your password"
                                     />

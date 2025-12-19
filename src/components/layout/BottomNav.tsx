@@ -10,7 +10,7 @@ export default function BottomNav() {
     if (pathname === "/login") return null;
 
     const navItems = [
-        { name: "Home", href: "/", icon: "home", filled: true },
+        { name: "Home", href: "/dashboard", icon: "home", filled: true },
         { name: "Record", href: "/record", icon: "radio_button_checked" },
         { name: "History", href: "/history", icon: "history" },
         { name: "Report", href: "/report", icon: "bar_chart" },

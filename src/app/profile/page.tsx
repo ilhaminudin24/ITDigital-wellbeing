@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 
+
 export default function Profile() {
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">

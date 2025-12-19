@@ -4,6 +4,8 @@ import React from "react";
 import MonthSummary from "@/components/history/MonthSummary";
 import ActivityList from "@/components/history/ActivityList";
 
+
+
 export default function HistoryPage() {
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">

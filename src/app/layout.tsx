@@ -31,6 +31,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
       </head>
       <body
+        suppressHydrationWarning={true}
         className={`${splineSans.variable} ${notoSans.variable} font-display antialiased selection:bg-accent selection:text-primary`}
       >
         <div className="flex flex-col min-h-screen">

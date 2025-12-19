@@ -2,14 +2,38 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import clsx from "clsx";
 
 export default function RecordPage() {
     const router = useRouter();
+    const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [photo, setPhoto] = useState<string | null>(null);
     const [status, setStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+    const [error, setError] = useState<boolean>(false);
+    const [shake, setShake] = useState<boolean>(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhoto(reader.result as string);
+                setError(false);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSave = () => {
+        if (!photo) {
+            setError(true);
+            setShake(true);
+            setTimeout(() => setShake(false), 500);
+            return;
+        }
+
         setStatus('saving');
 
         // Simulate API call
@@ -66,6 +90,23 @@ export default function RecordPage() {
                         </div>
                     </div>
 
+                    {/* Date Input - New Field */}
+                    <div className="group">
+                        <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Date</label>
+                        <div className="flex items-center w-full rounded-full bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-primary overflow-hidden h-14 transition-all hover:bg-gray-50/50 shadow-sm relative">
+                            <div className="pl-4 pr-3 flex items-center justify-center text-primary">
+                                <span className="material-symbols-outlined filled">calendar_today</span>
+                            </div>
+                            <input
+                                className="w-full bg-transparent border-none text-black placeholder-gray-400 focus:ring-0 px-0 text-base focus:outline-none h-full"
+                                type="date"
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                style={{ color: 'black' }}
+                            />
+                        </div>
+                    </div>
+
                     {/* Inputs Section - Clean on Background */}
                     <section className="relative flex flex-col gap-4">
                         <div className="absolute left-[29px] top-12 bottom-12 w-0.5 border-l-2 border-dashed border-gray-300 z-0"></div>
@@ -105,6 +146,51 @@ export default function RecordPage() {
                                 </div>
                             </div>
                         </div>
+                    </section>
+
+                    {/* Photo Upload Section - Mandatory */}
+                    <section className={clsx("flex flex-col gap-2", shake && "animate-shake")}>
+                        <div
+                            onClick={() => !photo && fileInputRef.current?.click()}
+                            className={clsx(
+                                "relative w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
+                                photo ? "h-48 border-transparent" : "h-32 border-gray-300 hover:border-primary hover:bg-blue-50/50"
+                            )}
+                        >
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handlePhotoUpload}
+                            />
+
+                            {photo ? (
+                                <>
+                                    <img src={photo} alt="Activity Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPhoto(null);
+                                        }}
+                                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center backdrop-blur-sm hover:bg-black/70 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">close</span>
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center gap-2 text-gray-400">
+                                    <span className="material-symbols-outlined text-4xl">add_a_photo</span>
+                                    <span className="text-sm font-medium">Upload Activity Photo</span>
+                                </div>
+                            )}
+                        </div>
+                        {error && (
+                            <p className="text-red-500 text-sm font-medium ml-1 flex items-center gap-1 animate-pulse">
+                                <span className="material-symbols-outlined text-[16px] filled">error</span>
+                                Photo evidence is required
+                            </p>
+                        )}
                     </section>
 
                     {/* Stats Section - Flat Typography */}
@@ -170,6 +256,6 @@ export default function RecordPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

@@ -6,25 +6,37 @@ import ActivityList from "@/components/history/ActivityList";
 
 
 
+import ActivityDetailModal from "@/components/history/ActivityDetailModal";
+
+interface Activity {
+    date: { day: number; month: string };
+    title: string;
+    duration: string;
+    distance: string;
+    startPoint: string;
+    endPoint: string;
+}
+
 export default function HistoryPage() {
     const [month, setMonth] = React.useState("Dec");
     const [isLoading, setIsLoading] = React.useState(false);
+    const [selectedActivity, setSelectedActivity] = React.useState<Activity | null>(null);
 
     // Mock Data Sets
-    const decActivities = [
-        { date: { day: 12, month: "Dec" }, title: "IKEA → BSD Green Office", duration: "45 min", distance: "2.4 km" },
-        { date: { day: 10, month: "Dec" }, title: "Alam Sutera Loop", duration: "52 min", distance: "3.1 km" },
-        { date: { day: 5, month: "Dec" }, title: "Lunch Walk", duration: "20 min", distance: "1.5 km" },
-        { date: { day: 2, month: "Dec" }, title: "Morning Commute", duration: "15 min", distance: "1.2 km" },
+    const decActivities: Activity[] = [
+        { date: { day: 12, month: "Dec" }, title: "IKEA → BSD Green Office", duration: "45 min", distance: "2.4 km", startPoint: "IKEA Alam Sutera", endPoint: "BSD Green Office" },
+        { date: { day: 10, month: "Dec" }, title: "Alam Sutera Loop", duration: "52 min", distance: "3.1 km", startPoint: "Living World", endPoint: "Flavor Bliss" },
+        { date: { day: 5, month: "Dec" }, title: "Lunch Walk", duration: "20 min", distance: "1.5 km", startPoint: "Office Tower A", endPoint: "Food Court" },
+        { date: { day: 2, month: "Dec" }, title: "Morning Commute", duration: "15 min", distance: "1.2 km", startPoint: "Bus Stop", endPoint: "Office Lobby" },
     ];
 
-    const novActivities = [
-        { date: { day: 28, month: "Nov" }, title: "Evening Stroll", duration: "30 min", distance: "2.0 km" },
-        { date: { day: 20, month: "Nov" }, title: "Power Walk", duration: "40 min", distance: "3.5 km" },
-        { date: { day: 15, month: "Nov" }, title: "To Coffee Shop", duration: "10 min", distance: "0.8 km" },
+    const novActivities: Activity[] = [
+        { date: { day: 28, month: "Nov" }, title: "Evening Stroll", duration: "30 min", distance: "2.0 km", startPoint: "Home", endPoint: "City Park" },
+        { date: { day: 20, month: "Nov" }, title: "Power Walk", duration: "40 min", distance: "3.5 km", startPoint: "Gym", endPoint: "Supermarket" },
+        { date: { day: 15, month: "Nov" }, title: "To Coffee Shop", duration: "10 min", distance: "0.8 km", startPoint: "Office", endPoint: "Kopi Kenangan" },
     ];
 
-    const [activities, setActivities] = React.useState(decActivities);
+    const [activities, setActivities] = React.useState<Activity[]>(decActivities);
     const [stats, setStats] = React.useState({ total: 8.2, target: 25 });
 
     const handleMonthChange = (newMonth: string) => {
@@ -75,9 +87,16 @@ export default function HistoryPage() {
                         month={month}
                         onMonthChange={handleMonthChange}
                         isLoading={isLoading}
+                        onActivityClick={setSelectedActivity}
                     />
                 </main>
             </div>
+
+            {/* Slide-Up Modal */}
+            <ActivityDetailModal
+                activity={selectedActivity}
+                onClose={() => setSelectedActivity(null)}
+            />
         </div>
     );
 }

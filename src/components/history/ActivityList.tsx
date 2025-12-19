@@ -9,6 +9,8 @@ interface Activity {
     title: string;
     duration: string;
     distance: string;
+    startPoint: string;
+    endPoint: string;
 }
 
 interface ActivityListProps {
@@ -16,9 +18,10 @@ interface ActivityListProps {
     month: string;
     onMonthChange: (month: string) => void;
     isLoading: boolean;
+    onActivityClick: (activity: Activity) => void;
 }
 
-export default function ActivityList({ activities, month, onMonthChange, isLoading }: ActivityListProps) {
+export default function ActivityList({ activities, month, onMonthChange, isLoading, onActivityClick }: ActivityListProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
@@ -91,6 +94,7 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
                     <div
                         key={index}
                         className="group hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => onActivityClick(activity)}
                     >
                         <ActivityItem {...activity} isLast={index === activities.length - 1} />
                     </div>

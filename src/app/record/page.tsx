@@ -1,0 +1,117 @@
+"use client";
+
+import Link from "next/link";
+
+export default function RecordPage() {
+    return (
+        <div className="relative flex min-h-screen w-full flex-col items-center bg-[#f5f5f5] text-black font-display overflow-x-hidden selection:bg-accent selection:text-primary">
+            <div className="w-full max-w-lg flex flex-col flex-grow pb-28 relative bg-[#f5f5f5]">
+                <header className="flex items-center justify-between px-6 py-6 pt-8 bg-white shadow-sm mb-4">
+                    <div className="flex flex-col">
+                        <h1 className="text-primary text-2xl font-bold leading-tight tracking-tight">Record Activity</h1>
+                        {/* Invisible placeholder to match Dashboard header height */}
+                        <p className="text-transparent text-sm font-medium select-none">Placeholder</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-primary">
+                            <span className="material-symbols-outlined">person</span>
+                        </button>
+                    </div>
+                </header>
+
+                <div className="px-6 flex flex-col gap-6 w-full">
+                    {/* Map Section - Embedded Seamlessly */}
+                    <div className="rounded-3xl overflow-hidden relative h-[250px] w-full group">
+                        <div
+                            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                            style={{
+                                backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAgzqYZRdI1ETAZSM3DLPyOqazimId35wXxdbm6nikerX--KYlYAQ-3jsp1P_wv14KPYqhNW6cZxH-ZREJqH3uY2lxwyrrUkCz-4NkKe7RazGRkMFw1KIyejN2J1m1Kavr00ddw98Fj_bEyOYGo-ja5nlJi1kehP8UqFte7X3IMd4Lqj0g_soo56_MtWsaeSRlGeFPuLHcw6Vo6sfNdD3sw4HaiFlQAoxM8LxbBS3sDZtoqaLELciGdHcs-wxI_CnaQHtvRimduiW7i')",
+                                opacity: 0.8
+                            }}
+                        ></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+
+                        <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+                            <button className="size-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:bg-gray-50 active:scale-95 transition-all">
+                                <span className="material-symbols-outlined text-[20px]">add</span>
+                            </button>
+                            <button className="size-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:bg-gray-50 active:scale-95 transition-all">
+                                <span className="material-symbols-outlined text-[20px]">remove</span>
+                            </button>
+                        </div>
+
+                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur text-xs font-bold px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 text-primary">
+                            <span className="size-2 rounded-full bg-primary animate-pulse"></span>
+                            Route Active
+                        </div>
+                    </div>
+
+                    {/* Inputs Section - Clean on Background */}
+                    <section className="relative flex flex-col gap-4">
+                        <div className="absolute left-[29px] top-12 bottom-12 w-0.5 border-l-2 border-dashed border-gray-300 z-0"></div>
+
+                        {/* Starting Point (A) */}
+                        <div className="relative z-10 group">
+                            <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Starting Point (A)</label>
+                            <div className="flex items-center w-full rounded-full bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-primary overflow-hidden h-14 transition-all hover:bg-gray-50/50 shadow-sm">
+                                <div className="pl-4 pr-3 flex items-center justify-center text-primary">
+                                    <span className="material-symbols-outlined filled">my_location</span>
+                                </div>
+                                <input
+                                    className="w-full bg-transparent border-none text-black placeholder-gray-400 focus:ring-0 px-0 text-base focus:outline-none"
+                                    placeholder="Current Location"
+                                    type="text"
+                                    defaultValue="IKEA Alam Sutera"
+                                    style={{ color: 'black' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Destination (B) */}
+                        <div className="relative z-10 group">
+                            <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Destination (B)</label>
+                            <div className="flex items-center w-full rounded-full bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-primary overflow-hidden h-14 transition-all hover:bg-gray-50/50 shadow-sm">
+                                <div className="pl-4 pr-3 flex items-center justify-center text-gray-400">
+                                    <span className="material-symbols-outlined">flag</span>
+                                </div>
+                                <input
+                                    className="w-full bg-transparent border-none text-black placeholder-gray-400 focus:ring-0 px-0 text-base focus:outline-none"
+                                    placeholder="Where are you walking?"
+                                    type="text"
+                                    style={{ color: 'black' }}
+                                />
+                                <div className="pr-4 flex items-center justify-center text-gray-400 cursor-pointer hover:text-gray-600">
+                                    <span className="material-symbols-outlined text-[20px]">close</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Stats Section - Flat Typography */}
+                    <section className="flex items-center justify-between px-2 pt-2">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
+                                <span className="material-symbols-outlined text-[18px]">straighten</span>
+                                Distance
+                            </div>
+                            <p className="text-3xl font-bold text-black tracking-tight">2.4 <span className="text-lg text-primary">km</span></p>
+                        </div>
+                        <div className="flex flex-col gap-1 text-right">
+                            <div className="flex items-center justify-end gap-2 text-gray-500 text-sm font-medium">
+                                <span className="material-symbols-outlined text-[18px]">timer</span>
+                                Est. Time
+                            </div>
+                            <p className="text-3xl font-bold text-black tracking-tight">30 <span className="text-lg text-primary">min</span></p>
+                        </div>
+                    </section>
+
+                    {/* Action Button - Inherited Style */}
+                    <button className="w-full bg-primary hover:bg-[#004f93] active:scale-[0.98] transition-all text-white font-bold text-lg h-14 rounded-full flex items-center justify-center gap-2 shadow-md">
+                        <span className="material-symbols-outlined filled text-accent">directions_walk</span>
+                        SAVE ACTIVITY
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}

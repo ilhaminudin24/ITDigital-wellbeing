@@ -7,7 +7,7 @@ import { clsx } from "clsx";
 export default function BottomNav() {
     const pathname = usePathname();
 
-    if (pathname === "/login") return null;
+    if (pathname === "/" || pathname === "/login") return null;
 
     const navItems = [
         { name: "Home", href: "/dashboard", icon: "home", filled: true },

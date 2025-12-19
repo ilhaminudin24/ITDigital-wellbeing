@@ -1,9 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
-
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function Profile() {
+    const router = useRouter();
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [emailDigestEnabled, setEmailDigestEnabled] = useState(false);
+
+    const handleSignOut = () => {
+        // Here you would typically clear cookies/storage
+        router.push('/');
+    };
+
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">
             {/* Mobile Container */}
@@ -97,7 +108,12 @@ export default function Profile() {
                                     <span className="text-sm font-bold text-primary">Notifications</span>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" defaultChecked className="sr-only peer" />
+                                    <input
+                                        type="checkbox"
+                                        checked={notificationsEnabled}
+                                        onChange={() => setNotificationsEnabled(!notificationsEnabled)}
+                                        className="sr-only peer"
+                                    />
                                     <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                                 </label>
                             </div>
@@ -111,7 +127,12 @@ export default function Profile() {
                                     <span className="text-sm font-bold text-primary">Email Digest</span>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" className="sr-only peer" />
+                                    <input
+                                        type="checkbox"
+                                        checked={emailDigestEnabled}
+                                        onChange={() => setEmailDigestEnabled(!emailDigestEnabled)}
+                                        className="sr-only peer"
+                                    />
                                     <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                                 </label>
                             </div>
@@ -141,7 +162,10 @@ export default function Profile() {
                     </div>
 
                     {/* Sign Out Button */}
-                    <button className="flex items-center justify-center w-full gap-2 px-4 py-4 mt-2 mb-8 text-lg font-bold text-white transition-all shadow-lg rounded-2xl bg-primary hover:bg-blue-800 hover:shadow-xl group">
+                    <button
+                        onClick={handleSignOut}
+                        className="flex items-center justify-center w-full gap-2 px-4 py-4 mt-2 mb-8 text-lg font-bold text-white transition-all shadow-lg rounded-2xl bg-primary hover:bg-blue-800 hover:shadow-xl group"
+                    >
                         <span className="text-[24px] material-symbols-outlined">logout</span>
                         Sign Out
                     </button>

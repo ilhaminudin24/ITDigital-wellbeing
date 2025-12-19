@@ -1,22 +1,42 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import clsx from "clsx";
 
 export default function RecordPage() {
+    const router = useRouter();
+    const [status, setStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+
+    const handleSave = () => {
+        setStatus('saving');
+
+        // Simulate API call
+        setTimeout(() => {
+            setStatus('success');
+
+            // Redirect after showing success message
+            setTimeout(() => {
+                router.push('/dashboard');
+            }, 2000);
+        }, 1500);
+    };
+
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-[#f5f5f5] text-black font-display overflow-x-hidden selection:bg-accent selection:text-primary">
             <div className="w-full max-w-lg flex flex-col flex-grow pb-28 relative bg-[#f5f5f5]">
                 <header className="flex items-center justify-between px-6 py-6 pt-8 bg-white shadow-sm mb-4">
                     <div className="flex flex-col">
+                        {/* Header Left */}
                         <h1 className="text-primary text-2xl font-bold leading-tight tracking-tight">Record Activity</h1>
-                        {/* Invisible placeholder to match Dashboard header height */}
-                        <p className="text-transparent text-sm font-medium select-none">Placeholder</p>
                     </div>
-                    <div className="flex gap-3">
-                        <button className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-primary">
-                            <span className="material-symbols-outlined">person</span>
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => router.push('/dashboard')}
+                        className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-slate-500"
+                    >
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
                 </header>
 
                 <div className="px-6 flex flex-col gap-6 w-full">
@@ -106,10 +126,48 @@ export default function RecordPage() {
                     </section>
 
                     {/* Action Button - Inherited Style */}
-                    <button className="w-full bg-primary hover:bg-[#004f93] active:scale-[0.98] transition-all text-white font-bold text-lg h-14 rounded-full flex items-center justify-center gap-2 shadow-md">
-                        <span className="material-symbols-outlined filled text-accent">directions_walk</span>
-                        SAVE ACTIVITY
+                    {/* Action Button - Inherited Style */}
+                    <button
+                        onClick={handleSave}
+                        disabled={status !== 'idle'}
+                        className={clsx(
+                            "w-full font-bold text-lg h-14 rounded-full flex items-center justify-center gap-2 shadow-md transition-all",
+                            status === 'idle' ? "bg-primary hover:bg-[#004f93] active:scale-[0.98] text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        )}
+                    >
+                        {status === 'idle' && (
+                            <>
+                                <span className="material-symbols-outlined filled text-accent">directions_walk</span>
+                                SAVE ACTIVITY
+                            </>
+                        )}
+                        {status === 'saving' && (
+                            <>
+                                <div className="w-5 h-5 border-2 border-gray-400 border-t-primary rounded-full animate-spin"></div>
+                                Saving...
+                            </>
+                        )}
+                        {status === 'success' && (
+                            <span className="text-green-600 flex items-center gap-2">
+                                <span className="material-symbols-outlined filled">check_circle</span>
+                                Saved!
+                            </span>
+                        )}
                     </button>
+                </div>
+
+                {/* Success Toast Overlay */}
+                <div className={clsx(
+                    "fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/20 backdrop-blur-sm transition-opacity duration-300",
+                    status === 'success' ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                )}>
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100 flex flex-col items-center text-center gap-3">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-1">
+                            <span className="material-symbols-outlined text-4xl text-green-600 filled">emoji_events</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900">Great Job!</h3>
+                        <p className="text-slate-500">Activity saved successfully.</p>
+                    </div>
                 </div>
             </div>
         </div>

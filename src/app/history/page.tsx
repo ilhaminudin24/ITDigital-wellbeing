@@ -7,6 +7,43 @@ import ActivityList from "@/components/history/ActivityList";
 
 
 export default function HistoryPage() {
+    const [month, setMonth] = React.useState("Dec");
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    // Mock Data Sets
+    const decActivities = [
+        { date: { day: 12, month: "Dec" }, title: "IKEA → BSD Green Office", duration: "45 min", distance: "2.4 km" },
+        { date: { day: 10, month: "Dec" }, title: "Alam Sutera Loop", duration: "52 min", distance: "3.1 km" },
+        { date: { day: 5, month: "Dec" }, title: "Lunch Walk", duration: "20 min", distance: "1.5 km" },
+        { date: { day: 2, month: "Dec" }, title: "Morning Commute", duration: "15 min", distance: "1.2 km" },
+    ];
+
+    const novActivities = [
+        { date: { day: 28, month: "Nov" }, title: "Evening Stroll", duration: "30 min", distance: "2.0 km" },
+        { date: { day: 20, month: "Nov" }, title: "Power Walk", duration: "40 min", distance: "3.5 km" },
+        { date: { day: 15, month: "Nov" }, title: "To Coffee Shop", duration: "10 min", distance: "0.8 km" },
+    ];
+
+    const [activities, setActivities] = React.useState(decActivities);
+    const [stats, setStats] = React.useState({ total: 8.2, target: 25 });
+
+    const handleMonthChange = (newMonth: string) => {
+        setIsLoading(true);
+        setMonth(newMonth);
+
+        // Simulate loading
+        setTimeout(() => {
+            if (newMonth === "Nov") {
+                setActivities(novActivities);
+                setStats({ total: 15.4, target: 25 });
+            } else {
+                setActivities(decActivities);
+                setStats({ total: 8.2, target: 25 });
+            }
+            setIsLoading(false);
+        }, 500);
+    };
+
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">
             <div className="w-full max-w-lg flex flex-col flex-grow pb-28">
@@ -29,11 +66,16 @@ export default function HistoryPage() {
                 </header>
                 <main className="flex flex-col px-6 gap-6 w-full">
                     <MonthSummary
-                        totalDistance={8.2}
-                        targetDistance={25}
-                        month="Dec"
+                        totalDistance={stats.total}
+                        targetDistance={stats.target}
+                        month={month}
                     />
-                    <ActivityList />
+                    <ActivityList
+                        activities={activities}
+                        month={month}
+                        onMonthChange={handleMonthChange}
+                        isLoading={isLoading}
+                    />
                 </main>
             </div>
         </div>

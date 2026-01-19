@@ -7,8 +7,8 @@ import { clsx } from "clsx";
 interface Activity {
     date: { day: number; month: string };
     title: string;
-    duration: string;
-    distance: string;
+    calories: number;
+    photo?: string;
     startPoint: string;
     endPoint: string;
 }
@@ -44,7 +44,7 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
                             onClick={toggleDropdown}
                             className="px-3 py-1.5 rounded-full border border-gray-200 flex items-center gap-1 text-xs font-bold bg-white text-text-muted hover:text-primary hover:border-primary transition-all"
                         >
-                            {month} 2024
+                            {month} 2026
                             <span className={clsx("material-symbols-outlined !text-[18px] transition-transform", isDropdownOpen && "rotate-180")}>
                                 expand_more
                             </span>
@@ -53,7 +53,7 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
                         {/* Dropdown Menu */}
                         {isDropdownOpen && (
                             <div className="absolute right-0 top-full mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 z-20 py-1 flex flex-col overflow-hidden">
-                                {["Dec", "Nov", "Oct"].map((m) => (
+                                {["Jan", "Dec", "Nov"].map((m) => (
                                     <button
                                         key={m}
                                         onClick={() => handleMonthSelect(m)}
@@ -62,7 +62,7 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
                                             month === m ? "text-primary bg-primary/5" : "text-slate-600"
                                         )}
                                     >
-                                        {m} 2024
+                                        {m} 2026
                                     </button>
                                 ))}
                             </div>
@@ -96,7 +96,13 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
                         className="group hover:bg-gray-50 transition-colors cursor-pointer"
                         onClick={() => onActivityClick(activity)}
                     >
-                        <ActivityItem {...activity} isLast={index === activities.length - 1} />
+                        <ActivityItem
+                            date={activity.date}
+                            title={activity.title}
+                            calories={activity.calories}
+                            photo={activity.photo}
+                            isLast={index === activities.length - 1}
+                        />
                     </div>
                 ))}
 
@@ -128,11 +134,11 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
                             </div>
 
                             <div className="flex flex-col gap-3">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Type</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Calories Range</label>
                                 <div className="flex gap-2">
-                                    <button className="px-4 py-2 rounded-full border-2 border-primary text-primary text-xs font-bold">Walking</button>
-                                    <button className="px-4 py-2 rounded-full border border-gray-200 text-slate-500 text-xs font-bold hover:border-gray-400">Running</button>
-                                    <button className="px-4 py-2 rounded-full border border-gray-200 text-slate-500 text-xs font-bold hover:border-gray-400">Cycling</button>
+                                    <button className="px-4 py-2 rounded-full border-2 border-primary text-primary text-xs font-bold">All</button>
+                                    <button className="px-4 py-2 rounded-full border border-gray-200 text-slate-500 text-xs font-bold hover:border-gray-400">100-300</button>
+                                    <button className="px-4 py-2 rounded-full border border-gray-200 text-slate-500 text-xs font-bold hover:border-gray-400">300+</button>
                                 </div>
                             </div>
 

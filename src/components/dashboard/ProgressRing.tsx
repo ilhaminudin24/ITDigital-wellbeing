@@ -1,17 +1,25 @@
 "use client";
 
 interface ProgressRingProps {
-    current: number;
-    target: number;
+    currentCalories: number;
+    targetCalories: number;
 }
 
 export default function ProgressRing({
-    current,
-    target,
+    currentCalories,
+    targetCalories,
 }: ProgressRingProps) {
     // Calculate percentage for the stroke-dasharray
     // The path length for radius 15.9155 is ~100.
-    const percentage = Math.min((current / target) * 100, 100);
+    const percentage = Math.min((currentCalories / targetCalories) * 100, 100);
+
+    // Format large numbers with K suffix for display
+    const formatCalories = (cal: number): string => {
+        if (cal >= 1000) {
+            return `${(cal / 1000).toFixed(1)}K`;
+        }
+        return cal.toString();
+    };
 
     return (
         <div className="flex flex-col items-center justify-center bg-card-bg rounded-none p-8 shadow-sm border border-gray-200 relative overflow-hidden w-full">
@@ -41,16 +49,16 @@ export default function ProgressRing({
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                     <span className="text-text-muted text-sm font-medium tracking-wider uppercase mb-1">Yearly Progress</span>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold text-primary tracking-tight">{current}</span>
-                        <span className="text-lg font-medium text-text-muted">KM</span>
+                        <span className="text-4xl font-bold text-primary tracking-tight">{formatCalories(currentCalories)}</span>
+                        <span className="text-lg font-medium text-text-muted">cal</span>
                     </div>
                     <div className="w-12 h-1 bg-accent rounded-full my-2"></div>
-                    <span className="text-lg font-bold text-text-dark/80">/ {target} KM</span>
+                    <span className="text-lg font-bold text-text-dark/80">/ {formatCalories(targetCalories)} cal</span>
                 </div>
             </div>
             <div className="flex items-center gap-2 bg-accent/20 px-4 py-2 rounded-full border border-accent/40">
                 <span className="material-symbols-outlined text-primary text-sm filled">bolt</span>
-                <span className="text-primary font-bold text-sm">{Math.round((current / target) * 100)}% Complete</span>
+                <span className="text-primary font-bold text-sm">{Math.round(percentage)}% Complete</span>
             </div>
         </div>
     );

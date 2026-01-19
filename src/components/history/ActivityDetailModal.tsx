@@ -6,8 +6,8 @@ import { clsx } from "clsx";
 interface Activity {
     date: { day: number; month: string };
     title: string;
-    duration: string;
-    distance: string;
+    calories: number;
+    photo?: string;
     startPoint: string;
     endPoint: string;
 }
@@ -52,7 +52,6 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
 
     // Swipe Logic
     const handleTouchStart = (e: React.TouchEvent) => {
-        // Only allow dragging from the header area or top 50px
         const touchscreenY = e.touches[0].clientY;
         const modalTop = modalRef.current?.getBoundingClientRect().top || 0;
 
@@ -79,7 +78,7 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
         if (dragOffset > 150) {
             handleClose();
         } else {
-            setDragOffset(0); // Reset position
+            setDragOffset(0);
         }
     };
 
@@ -90,7 +89,7 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
             "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
             activity ? "pointer-events-auto" : "pointer-events-none"
         )}>
-            {/* Backdrop - Click to Close */}
+            {/* Backdrop */}
             <div
                 className={clsx(
                     "absolute inset-0 bg-black/20 backdrop-blur-[2px] transition-opacity duration-300",
@@ -104,7 +103,7 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
             <div
                 ref={modalRef}
                 className={clsx(
-                    "relative w-full max-w-lg bg-white h-[92dvh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-transform duration-500 cubic-bezier(0.32, 0.72, 0, 1)",
+                    "relative w-full max-w-lg bg-white h-[92dvh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-transform duration-500",
                     isVisible ? "translate-y-0" : "translate-y-full"
                 )}
                 style={{
@@ -112,12 +111,12 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
                     transform: isDragging ? `translateY(${dragOffset}px)` : isVisible ? "translateY(0)" : "translateY(100%)",
                     transition: isDragging ? "none" : undefined
                 }}
-                onClick={(e) => e.stopPropagation()} // Stop bubbling to backdrop
+                onClick={(e) => e.stopPropagation()}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             >
-                {/* Drag Handle Indicator */}
+                {/* Drag Handle */}
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-300 rounded-full z-30 opacity-50 sm:hidden"></div>
 
                 {/* Header */}
@@ -135,18 +134,18 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
 
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto pb-8 bg-white">
-                    {/* Hero Map */}
+                    {/* Hero Section with Photo */}
                     <div className="h-64 w-full bg-slate-100 relative">
-                        <div
-                            className="absolute inset-0 bg-cover bg-center opacity-80"
-                            style={{
-                                backgroundImage: `url('https://maps.googleapis.com/maps/api/staticmap?center=-6.229728,106.664705&zoom=15&size=600x400&maptype=roadmap&style=feature:poi|visibility:off&key=YOUR_API_KEY_HERE')`
-                            }}
-                        />
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/map-light.png')] opacity-50"></div>
-                        <div className="absolute bottom-4 right-4 bg-white/90 px-3 py-1 rounded-full text-xs font-bold shadow-sm text-slate-600">
-                            View Full Map
-                        </div>
+                        {activity?.photo ? (
+                            <div
+                                className="absolute inset-0 bg-cover bg-center"
+                                style={{ backgroundImage: `url('${activity.photo}')` }}
+                            />
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/20">
+                                <span className="material-symbols-outlined text-6xl text-primary/30">directions_walk</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="px-6 -mt-6 relative z-10">
@@ -154,24 +153,25 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6 flex flex-col gap-1">
                             <div className="flex items-center gap-2 text-slate-900">
                                 <span className="material-symbols-outlined !text-lg text-primary">calendar_today</span>
-                                <span className="font-bold">Thursday, {activity?.date.day} {activity?.date.month} 2024</span>
+                                <span className="font-bold">{activity?.date.day} {activity?.date.month} 2026</span>
                             </div>
                             <div className="flex items-center gap-2 text-slate-500 text-sm ml-7">
-                                <span>08:30 AM</span>
-                                <span>•</span>
                                 <span>{activity?.title || "Walk"}</span>
                             </div>
                         </div>
 
-                        {/* Photo Evidence */}
-                        <div className="mb-8">
-                            <h3 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wide opacity-80">Activity Photo</h3>
-                            <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 rotate-1 hover:rotate-0 transition-transform duration-300">
-                                <div className="aspect-[4/3] w-full bg-slate-200 rounded-xl overflow-hidden relative">
-                                    <div
-                                        className="absolute inset-0 bg-cover bg-center"
-                                        style={{ backgroundImage: `url('https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?q=80&w=2670&auto=format&fit=crop')` }}
-                                    />
+                        {/* Calories Card */}
+                        <div className="mb-6 bg-gradient-to-r from-primary/5 to-accent/20 rounded-2xl p-6 border border-primary/10">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-bold text-primary/70 uppercase tracking-wider mb-1">Calories Burned</p>
+                                    <p className="text-4xl font-black text-primary">
+                                        {activity?.calories || 0}
+                                        <span className="text-lg font-bold text-primary/70 ml-1">cal</span>
+                                    </p>
+                                </div>
+                                <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-3xl text-primary">local_fire_department</span>
                                 </div>
                             </div>
                         </div>
@@ -188,7 +188,7 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
                                     </div>
                                     <div className="pb-8">
                                         <div className="text-sm font-bold text-slate-900">{activity?.startPoint || "Start Point"}</div>
-                                        <div className="text-xs text-slate-500">Start Point • 08:30 AM</div>
+                                        <div className="text-xs text-slate-500">Start Point</div>
                                     </div>
                                 </div>
 
@@ -199,24 +199,11 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
                                     </div>
                                     <div>
                                         <div className="text-sm font-bold text-slate-900">{activity?.endPoint || "End Point"}</div>
-                                        <div className="text-xs text-slate-500">Destination • 09:15 AM</div>
+                                        <div className="text-xs text-slate-500">Destination</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-1">
-                                <span className="text-3xl font-bold text-slate-900">{activity?.distance}</span>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Distance</span>
-                            </div>
-                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-1">
-                                <span className="text-3xl font-bold text-slate-900">{activity?.duration}</span>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Duration</span>
-                            </div>
-                        </div>
-
                     </div>
                     <div className="h-10"></div>
                 </div>

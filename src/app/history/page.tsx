@@ -1,43 +1,84 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import MonthSummary from "@/components/history/MonthSummary";
 import ActivityList from "@/components/history/ActivityList";
-
-
-
 import ActivityDetailModal from "@/components/history/ActivityDetailModal";
+import {
+    getUser,
+    getActivities,
+    getMonthlyCalories,
+    calculateMonthlyTarget,
+    Activity as UserActivity,
+    initializeMockData,
+} from "@/lib/userData";
 
 interface Activity {
     date: { day: number; month: string };
     title: string;
-    duration: string;
-    distance: string;
+    calories: number;
+    photo?: string;
     startPoint: string;
     endPoint: string;
 }
 
 export default function HistoryPage() {
-    const [month, setMonth] = React.useState("Dec");
-    const [isLoading, setIsLoading] = React.useState(false);
-    const [selectedActivity, setSelectedActivity] = React.useState<Activity | null>(null);
+    const [month, setMonth] = useState("Jan");
+    const [isLoading, setIsLoading] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [stats, setStats] = useState({ total: 0, target: 10625 });
 
-    // Mock Data Sets
-    const decActivities: Activity[] = [
-        { date: { day: 12, month: "Dec" }, title: "IKEA → BSD Green Office", duration: "45 min", distance: "2.4 km", startPoint: "IKEA Alam Sutera", endPoint: "BSD Green Office" },
-        { date: { day: 10, month: "Dec" }, title: "Alam Sutera Loop", duration: "52 min", distance: "3.1 km", startPoint: "Living World", endPoint: "Flavor Bliss" },
-        { date: { day: 5, month: "Dec" }, title: "Lunch Walk", duration: "20 min", distance: "1.5 km", startPoint: "Office Tower A", endPoint: "Food Court" },
-        { date: { day: 2, month: "Dec" }, title: "Morning Commute", duration: "15 min", distance: "1.2 km", startPoint: "Bus Stop", endPoint: "Office Lobby" },
-    ];
+    // Convert UserActivity to display Activity format
+    const convertToDisplayActivity = (act: UserActivity): Activity => {
+        const date = new Date(act.date);
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return {
+            date: {
+                day: date.getDate(),
+                month: monthNames[date.getMonth()]
+            },
+            title: `${act.locationFrom} → ${act.locationTo}`,
+            calories: act.calories,
+            photo: act.photo || undefined,
+            startPoint: act.locationFrom,
+            endPoint: act.locationTo,
+        };
+    };
 
-    const novActivities: Activity[] = [
-        { date: { day: 28, month: "Nov" }, title: "Evening Stroll", duration: "30 min", distance: "2.0 km", startPoint: "Home", endPoint: "City Park" },
-        { date: { day: 20, month: "Nov" }, title: "Power Walk", duration: "40 min", distance: "3.5 km", startPoint: "Gym", endPoint: "Supermarket" },
-        { date: { day: 15, month: "Nov" }, title: "To Coffee Shop", duration: "10 min", distance: "0.8 km", startPoint: "Office", endPoint: "Kopi Kenangan" },
-    ];
+    // Load activities for a specific month
+    const loadActivitiesForMonth = (monthName: string) => {
+        const monthMap: { [key: string]: number } = {
+            "Jan": 0, "Feb": 1, "Mar": 2, "Apr": 3, "May": 4, "Jun": 5,
+            "Jul": 6, "Aug": 7, "Sep": 8, "Oct": 9, "Nov": 10, "Dec": 11
+        };
 
-    const [activities, setActivities] = React.useState<Activity[]>(decActivities);
-    const [stats, setStats] = React.useState({ total: 8.2, target: 25 });
+        const monthIndex = monthMap[monthName];
+        const year = 2026;
+
+        const allActivities = getActivities();
+        const filtered = allActivities.filter(act => {
+            const actDate = new Date(act.date);
+            return actDate.getMonth() === monthIndex && actDate.getFullYear() === year;
+        });
+
+        const displayActivities = filtered.map(convertToDisplayActivity);
+        const monthlyCalories = getMonthlyCalories(monthIndex, year);
+
+        const user = getUser();
+        const monthlyTarget = user ? calculateMonthlyTarget(user.targetCalories) : 10625;
+
+        setActivities(displayActivities);
+        setStats({ total: monthlyCalories, target: monthlyTarget });
+    };
+
+    useEffect(() => {
+        // Initialize mock data if needed
+        initializeMockData();
+
+        // Load initial data
+        loadActivitiesForMonth(month);
+    }, []);
 
     const handleMonthChange = (newMonth: string) => {
         setIsLoading(true);
@@ -45,15 +86,9 @@ export default function HistoryPage() {
 
         // Simulate loading
         setTimeout(() => {
-            if (newMonth === "Nov") {
-                setActivities(novActivities);
-                setStats({ total: 15.4, target: 25 });
-            } else {
-                setActivities(decActivities);
-                setStats({ total: 8.2, target: 25 });
-            }
+            loadActivitiesForMonth(newMonth);
             setIsLoading(false);
-        }, 500);
+        }, 300);
     };
 
     return (
@@ -78,8 +113,8 @@ export default function HistoryPage() {
                 </header>
                 <main className="flex flex-col px-6 gap-6 w-full">
                     <MonthSummary
-                        totalDistance={stats.total}
-                        targetDistance={stats.target}
+                        totalCalories={stats.total}
+                        monthlyTarget={stats.target}
                         month={month}
                     />
                     <ActivityList

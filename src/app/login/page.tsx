@@ -2,11 +2,302 @@
 
 import Image from "next/image";
 import Link from "next/link";
-
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import {
+    getUser,
+    createUser,
+    calculateBMR,
+    calculateYearlyTarget,
+    calculateWeeklyTarget,
+    TARGET_FORMULA_TOOLTIP,
+    getMotivationText,
+} from "@/lib/userData";
 
 export default function LoginPage() {
     const router = useRouter();
+
+    // Multi-step form state
+    const [step, setStep] = useState<'login' | 'profile'>('login');
+
+    // Login form state
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+
+    // Profile form state
+    const [name, setName] = useState('');
+    const [gender, setGender] = useState<'male' | 'female'>('male');
+    const [weight, setWeight] = useState<number>(70);
+    const [height, setHeight] = useState<number>(170);
+    const [age, setAge] = useState<number>(30);
+    const [targetPreview, setTargetPreview] = useState<number>(0);
+    const [showTooltip, setShowTooltip] = useState(false);
+
+    // Check if user already has a completed profile
+    useEffect(() => {
+        const user = getUser();
+        if (user?.profileCompleted) {
+            router.push('/dashboard');
+        }
+    }, [router]);
+
+    const handleLogin = () => {
+        // For now, we just proceed to profile step or dashboard
+        const user = getUser();
+        if (user?.profileCompleted) {
+            router.push('/dashboard');
+        } else {
+            // Extract name from email for convenience
+            const extractedName = email.split('@')[0];
+            setName(extractedName.charAt(0).toUpperCase() + extractedName.slice(1));
+            setStep('profile');
+        }
+    };
+
+    const handleCalculate = () => {
+        const bmr = calculateBMR(weight, height, age, gender);
+        setTargetPreview(calculateYearlyTarget(bmr));
+    };
+
+    const handleStartJourney = () => {
+        if (targetPreview === 0) {
+            handleCalculate();
+        }
+
+        // Create user with profile data
+        createUser({
+            name: name || 'Coworker',
+            email: email || 'coworker@ikea.com',
+            weight,
+            height,
+            age,
+            gender,
+        });
+
+        router.push('/dashboard');
+    };
+
+    // Auto-calculate when profile fields change
+    useEffect(() => {
+        if (step === 'profile') {
+            handleCalculate();
+        }
+    }, [weight, height, age, gender, step]);
+
+    // Render Profile Step
+    if (step === 'profile') {
+        return (
+            <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background-light text-slate-900 font-display">
+                {/* Header */}
+                <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4 lg:px-10">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-14 items-center justify-center bg-ikea-blue">
+                            <div className="size-2.5 rounded-full bg-ikea-yellow"></div>
+                        </div>
+                        <div className="flex flex-col">
+                            <h2 className="text-sm font-bold leading-tight tracking-tight text-slate-900 lg:text-base">
+                                Wellbeing Monitor
+                            </h2>
+                            <span className="text-xs text-slate-500">
+                                IT & Digital Indonesia
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setStep('login')}
+                        className="flex items-center gap-1 text-sm text-slate-500 hover:text-primary"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                        Back
+                    </button>
+                </header>
+
+                {/* Main Content */}
+                <main className="flex flex-1 flex-col items-center justify-center p-4 lg:p-8">
+                    <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 border border-gray-200">
+                        <div className="mb-6 text-center">
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+                                <span className="material-symbols-outlined text-[16px]">person</span>
+                                Profile Setup
+                            </div>
+                            <h2 className="text-2xl font-bold text-primary mb-2">
+                                Complete Your Profile
+                            </h2>
+                            <p className="text-slate-500 text-sm">
+                                We need a few details to calculate your personal calorie target.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col gap-5">
+                            {/* Name Input */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Your Name
+                                </label>
+                                <input
+                                    className="w-full rounded-full border border-gray-300 bg-gray-50 px-5 py-3 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="Enter your name"
+                                />
+                            </div>
+
+                            {/* Gender Selection */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Gender
+                                </label>
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setGender('male')}
+                                        className={`flex-1 py-3 rounded-full border-2 font-bold transition-all ${gender === 'male'
+                                            ? 'border-primary bg-primary text-white'
+                                            : 'border-gray-200 bg-gray-50 text-slate-600 hover:border-primary/50'
+                                            }`}
+                                    >
+                                        <span className="material-symbols-outlined text-[20px] mr-1 align-middle">male</span>
+                                        Male
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setGender('female')}
+                                        className={`flex-1 py-3 rounded-full border-2 font-bold transition-all ${gender === 'female'
+                                            ? 'border-primary bg-primary text-white'
+                                            : 'border-gray-200 bg-gray-50 text-slate-600 hover:border-primary/50'
+                                            }`}
+                                    >
+                                        <span className="material-symbols-outlined text-[20px] mr-1 align-middle">female</span>
+                                        Female
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Weight, Height, Age Inputs */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        Weight
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-base text-slate-900 text-center focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                            type="number"
+                                            value={weight}
+                                            onChange={(e) => setWeight(Number(e.target.value))}
+                                            min={30}
+                                            max={200}
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">
+                                            kg
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        Height
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-base text-slate-900 text-center focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                            type="number"
+                                            value={height}
+                                            onChange={(e) => setHeight(Number(e.target.value))}
+                                            min={100}
+                                            max={250}
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">
+                                            cm
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        Age
+                                    </label>
+                                    <input
+                                        className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-base text-slate-900 text-center focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        type="number"
+                                        value={age}
+                                        onChange={(e) => setAge(Number(e.target.value))}
+                                        min={18}
+                                        max={80}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Target Preview with Tooltip */}
+                            <div className="relative bg-gradient-to-r from-primary/5 to-accent/20 rounded-2xl p-5 border border-primary/10">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-bold text-primary/70 uppercase tracking-wider mb-1">
+                                            Your Yearly Target
+                                        </p>
+                                        <p className="text-3xl font-black text-primary">
+                                            {targetPreview.toLocaleString()}
+                                            <span className="text-lg font-bold text-primary/70 ml-1">cal</span>
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            ~{Math.round(targetPreview / 52).toLocaleString()} cal/week • ~{Math.round(targetPreview / 12).toLocaleString()} cal/month
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="relative p-2 rounded-full hover:bg-primary/10 transition-colors"
+                                        onMouseEnter={() => setShowTooltip(true)}
+                                        onMouseLeave={() => setShowTooltip(false)}
+                                        onClick={() => setShowTooltip(!showTooltip)}
+                                    >
+                                        <span className="material-symbols-outlined text-primary">info</span>
+                                    </button>
+                                </div>
+
+                                {/* Tooltip */}
+                                {showTooltip && (
+                                    <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 text-white text-xs p-4 rounded-xl shadow-xl z-10">
+                                        <p className="font-bold mb-2">Bagaimana Target Dihitung?</p>
+                                        <p className="whitespace-pre-line leading-relaxed opacity-90">
+                                            {TARGET_FORMULA_TOOLTIP}
+                                        </p>
+                                        <div className="absolute -top-2 right-6 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-slate-800"></div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Motivational Message */}
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                                <span className="material-symbols-outlined text-green-600 text-xl">emoji_events</span>
+                                <div>
+                                    <p className="text-sm font-bold text-green-800 mb-1">💪 Target ini sangat achievable!</p>
+                                    <p className="text-xs text-green-700 leading-relaxed">
+                                        {getMotivationText(Math.round(targetPreview / 52), weight)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Start Journey Button */}
+                            <button
+                                type="button"
+                                onClick={handleStartJourney}
+                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-base font-bold tracking-wide text-white transition-transform hover:scale-[1.02] hover:bg-[#004f93] active:scale-[0.98]"
+                            >
+                                <span className="material-symbols-outlined text-[20px] text-accent">directions_walk</span>
+                                START MY JOURNEY
+                            </button>
+                        </div>
+                    </div>
+
+                    <footer className="mt-8 text-center text-xs text-slate-400">
+                        © IKEA IT & Digital Indonesia 2026. All rights reserved.
+                    </footer>
+                </main>
+            </div>
+        );
+    }
+
+    // Render Login Step (Original)
     return (
         <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background-light text-slate-900 font-display">
             {/* Header */}
@@ -57,11 +348,11 @@ export default function LoginPage() {
                                 <span className="material-symbols-outlined text-[16px]">
                                     directions_walk
                                 </span>
-                                Challenge 2024
+                                Challenge 2026
                             </div>
                             <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-slate-900 lg:text-5xl">
                                 Track your <br />
-                                <span className="text-primary">journey to 150km</span>
+                                <span className="text-primary">calorie journey</span>
                             </h1>
                             <p className="text-lg text-slate-600">
                                 Join the challenge and monitor your walking activity with IKEA IT
@@ -106,7 +397,7 @@ export default function LoginPage() {
                             </p>
                         </div>
 
-                        <form className="flex flex-col gap-6">
+                        <form className="flex flex-col gap-6" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
                             <div className="flex flex-col gap-2">
                                 <label
                                     className="text-sm font-semibold text-slate-700"
@@ -121,6 +412,8 @@ export default function LoginPage() {
                                         autoComplete="username"
                                         type="text"
                                         placeholder="Enter your ID or Email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
                                     />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 peer-focus:text-primary">
                                         <span className="material-symbols-outlined text-[20px]">
@@ -142,12 +435,17 @@ export default function LoginPage() {
                                         className="peer w-full rounded-full border border-gray-300 bg-gray-50 px-5 py-3.5 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                         id="password"
                                         autoComplete="current-password"
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         placeholder="Enter your password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
                                     />
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-slate-600 peer-focus:text-primary">
+                                    <span
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-slate-600 peer-focus:text-primary"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
                                         <span className="material-symbols-outlined text-[20px]">
-                                            visibility
+                                            {showPassword ? "visibility_off" : "visibility"}
                                         </span>
                                     </span>
                                 </div>
@@ -164,8 +462,7 @@ export default function LoginPage() {
 
                             <button
                                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-base font-bold tracking-wide text-white transition-transform hover:scale-[1.02] hover:bg-[#004f93] active:scale-[0.98]"
-                                type="button"
-                                onClick={() => router.push('/dashboard')}
+                                type="submit"
                             >
                                 LOGIN
                                 <span className="material-symbols-outlined text-[20px]">
@@ -191,7 +488,7 @@ export default function LoginPage() {
                 </div>
 
                 <footer className="mt-8 text-center text-xs text-slate-400">
-                    © IKEA IT & Digital Indonesia 2024. All rights reserved.
+                    © IKEA IT & Digital Indonesia 2026. All rights reserved.
                 </footer>
             </main>
         </div>

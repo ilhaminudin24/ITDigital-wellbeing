@@ -8,9 +8,9 @@ interface Activity {
     date: { day: number; month: string };
     title: string;
     calories: number;
+    distance: number;
     photo?: string;
-    startPoint: string;
-    endPoint: string;
+    location: string;
 }
 
 interface ActivityListProps {
@@ -100,6 +100,7 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
                             date={activity.date}
                             title={activity.title}
                             calories={activity.calories}
+                            distance={activity.distance}
                             photo={activity.photo}
                             isLast={index === activities.length - 1}
                         />

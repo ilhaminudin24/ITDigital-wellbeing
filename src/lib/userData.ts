@@ -21,8 +21,8 @@ export interface User {
 export interface Activity {
     id: string;
     date: string;        // ISO date string (YYYY-MM-DD)
-    locationFrom: string;
-    locationTo: string;
+    location: string;    // Exercise location (single field)
+    distance: number;    // Distance in km
     calories: number;
     photo: string;       // base64 encoded
     createdAt: string;   // ISO datetime string
@@ -296,8 +296,8 @@ function saveActivities(activities: Activity[]): void {
  */
 export function addActivity(data: {
     date: string;
-    locationFrom: string;
-    locationTo: string;
+    location: string;
+    distance: number;
     calories: number;
     photo: string;
 }): Activity {
@@ -306,8 +306,8 @@ export function addActivity(data: {
     const activity: Activity = {
         id: `act-${Date.now()}`,
         date: data.date,
-        locationFrom: data.locationFrom,
-        locationTo: data.locationTo,
+        location: data.location,
+        distance: data.distance,
         calories: data.calories,
         photo: data.photo,
         createdAt: new Date().toISOString(),
@@ -403,8 +403,8 @@ export function initializeMockData(): void {
         {
             id: 'act-001',
             date: '2026-01-15',
-            locationFrom: 'IKEA Alam Sutera',
-            locationTo: 'BSD Green Office',
+            location: 'BSD Green Office Park',
+            distance: 2.5,
             calories: 350,
             photo: '',
             createdAt: '2026-01-15T08:30:00.000Z',
@@ -412,8 +412,8 @@ export function initializeMockData(): void {
         {
             id: 'act-002',
             date: '2026-01-12',
-            locationFrom: 'Living World',
-            locationTo: 'Flavor Bliss',
+            location: 'AEON Mall BSD City',
+            distance: 3.2,
             calories: 420,
             photo: '',
             createdAt: '2026-01-12T07:45:00.000Z',
@@ -421,8 +421,8 @@ export function initializeMockData(): void {
         {
             id: 'act-003',
             date: '2026-01-10',
-            locationFrom: 'Office Tower A',
-            locationTo: 'Food Court',
+            location: 'The Breeze BSD',
+            distance: 1.5,
             calories: 180,
             photo: '',
             createdAt: '2026-01-10T12:15:00.000Z',
@@ -430,8 +430,8 @@ export function initializeMockData(): void {
         {
             id: 'act-004',
             date: '2026-01-05',
-            locationFrom: 'Bus Stop',
-            locationTo: 'Office Lobby',
+            location: 'IKEA Alam Sutera',
+            distance: 1.2,
             calories: 150,
             photo: '',
             createdAt: '2026-01-05T07:30:00.000Z',
@@ -439,8 +439,8 @@ export function initializeMockData(): void {
         {
             id: 'act-005',
             date: '2025-12-28',
-            locationFrom: 'Home',
-            locationTo: 'City Park',
+            location: 'Scientia Square Park',
+            distance: 4.0,
             calories: 520,
             photo: '',
             createdAt: '2025-12-28T06:00:00.000Z',
@@ -448,8 +448,8 @@ export function initializeMockData(): void {
         {
             id: 'act-006',
             date: '2025-12-20',
-            locationFrom: 'Gym',
-            locationTo: 'Supermarket',
+            location: 'Living World Alam Sutera',
+            distance: 2.8,
             calories: 380,
             photo: '',
             createdAt: '2025-12-20T17:30:00.000Z',

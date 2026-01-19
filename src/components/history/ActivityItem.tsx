@@ -9,6 +9,7 @@ interface ActivityItemProps {
     };
     title: string;
     calories: number;
+    distance?: number;
     photo?: string;
     isLast?: boolean;
     onClick?: () => void;
@@ -16,8 +17,9 @@ interface ActivityItemProps {
 
 export default function ActivityItem({
     date = { day: 12, month: "Jan" },
-    title = "IKEA → BSD Green Office",
+    title = "BSD Green Office Park",
     calories = 350,
+    distance,
     photo,
     isLast = false,
     onClick,
@@ -44,6 +46,12 @@ export default function ActivityItem({
                     {title}
                 </h3>
                 <div className="flex items-center gap-3">
+                    {distance !== undefined && (
+                        <span className="text-xs text-text-muted flex items-center gap-1">
+                            <span className="material-symbols-outlined !text-[14px]">straighten</span>
+                            {distance} km
+                        </span>
+                    )}
                     <span className="text-xs text-text-muted flex items-center gap-1">
                         <span className="material-symbols-outlined !text-[14px]">local_fire_department</span>
                         {calories} cal

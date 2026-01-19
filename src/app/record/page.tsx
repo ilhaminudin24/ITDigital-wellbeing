@@ -8,8 +8,8 @@ import { addActivity } from "@/lib/userData";
 export default function RecordPage() {
     const router = useRouter();
     const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    const [locationFrom, setLocationFrom] = useState<string>('');
-    const [locationTo, setLocationTo] = useState<string>('');
+    const [location, setLocation] = useState<string>('');
+    const [distance, setDistance] = useState<number>(1.0);
     const [calories, setCalories] = useState<number>(200);
     const [photo, setPhoto] = useState<string | null>(null);
     const [status, setStatus] = useState<'idle' | 'saving' | 'success'>('idle');
@@ -50,8 +50,15 @@ export default function RecordPage() {
             return;
         }
 
-        if (!locationFrom.trim() || !locationTo.trim()) {
-            setError('Please enter both start and end locations');
+        if (!location.trim()) {
+            setError('Please enter the exercise location');
+            setShake(true);
+            setTimeout(() => setShake(false), 500);
+            return;
+        }
+
+        if (distance <= 0 || distance > 50) {
+            setError('Distance must be between 0.1-50 km');
             setShake(true);
             setTimeout(() => setShake(false), 500);
             return;
@@ -64,8 +71,8 @@ export default function RecordPage() {
         setTimeout(() => {
             addActivity({
                 date,
-                locationFrom: locationFrom.trim(),
-                locationTo: locationTo.trim(),
+                location: location.trim(),
+                distance,
                 calories,
                 photo: photo || '',
             });
@@ -113,45 +120,66 @@ export default function RecordPage() {
                         </div>
                     </div>
 
-                    {/* Location Inputs */}
-                    <section className="relative flex flex-col gap-4">
-                        <div className="absolute left-[29px] top-12 bottom-12 w-0.5 border-l-2 border-dashed border-gray-300 z-0"></div>
-
-                        {/* Starting Point (A) */}
-                        <div className="relative z-10 group">
-                            <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Starting Point</label>
-                            <div className="flex items-center w-full rounded-full bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-primary overflow-hidden h-14 transition-all hover:bg-gray-50/50 shadow-sm">
-                                <div className="pl-4 pr-3 flex items-center justify-center text-primary">
-                                    <span className="material-symbols-outlined filled">my_location</span>
-                                </div>
-                                <input
-                                    className="w-full bg-transparent border-none text-black placeholder-gray-400 focus:ring-0 px-0 text-base focus:outline-none"
-                                    placeholder="e.g., IKEA Alam Sutera"
-                                    type="text"
-                                    value={locationFrom}
-                                    onChange={(e) => setLocationFrom(e.target.value)}
-                                    style={{ color: 'black' }}
-                                />
+                    {/* Exercise Location Input */}
+                    <div className="group">
+                        <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Exercise Location</label>
+                        <div className="flex items-center w-full rounded-full bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-primary overflow-hidden h-14 transition-all hover:bg-gray-50/50 shadow-sm">
+                            <div className="pl-4 pr-3 flex items-center justify-center text-primary">
+                                <span className="material-symbols-outlined filled">location_on</span>
                             </div>
+                            <input
+                                className="w-full bg-transparent border-none text-black placeholder-gray-400 focus:ring-0 px-0 text-base focus:outline-none"
+                                placeholder="e.g., BSD Green Office Park"
+                                type="text"
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                                style={{ color: 'black' }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Distance Input */}
+                    <section className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="material-symbols-outlined text-primary">straighten</span>
+                            <label className="text-sm font-bold text-gray-700">Jarak (Distance)</label>
                         </div>
 
-                        {/* Destination (B) */}
-                        <div className="relative z-10 group">
-                            <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Destination</label>
-                            <div className="flex items-center w-full rounded-full bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-primary overflow-hidden h-14 transition-all hover:bg-gray-50/50 shadow-sm">
-                                <div className="pl-4 pr-3 flex items-center justify-center text-gray-400">
-                                    <span className="material-symbols-outlined">flag</span>
+                        <div className="flex items-center justify-center gap-4">
+                            <button
+                                type="button"
+                                onClick={() => setDistance(Math.max(0.1, Math.round((distance - 0.5) * 10) / 10))}
+                                className="w-14 h-14 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all flex items-center justify-center text-primary font-bold text-2xl"
+                            >
+                                −
+                            </button>
+                            <div className="flex-1 max-w-[160px]">
+                                <div className="flex items-center justify-center">
+                                    <input
+                                        type="number"
+                                        value={distance}
+                                        onChange={(e) => setDistance(Math.max(0.1, Math.min(50, Number(e.target.value))))}
+                                        className="w-24 text-center text-4xl font-black text-primary bg-transparent border-none focus:outline-none focus:ring-0"
+                                        min={0.1}
+                                        max={50}
+                                        step={0.1}
+                                    />
+                                    <span className="text-xl font-bold text-primary/70 ml-1">km</span>
                                 </div>
-                                <input
-                                    className="w-full bg-transparent border-none text-black placeholder-gray-400 focus:ring-0 px-0 text-base focus:outline-none"
-                                    placeholder="e.g., BSD Green Office"
-                                    type="text"
-                                    value={locationTo}
-                                    onChange={(e) => setLocationTo(e.target.value)}
-                                    style={{ color: 'black' }}
-                                />
+                                <p className="text-center text-sm text-gray-400 mt-1">kilometers</p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => setDistance(Math.min(50, Math.round((distance + 0.5) * 10) / 10))}
+                                className="w-14 h-14 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all flex items-center justify-center text-primary font-bold text-2xl"
+                            >
+                                +
+                            </button>
                         </div>
+
+                        <p className="text-center text-xs text-gray-400 mt-3">
+                            Range: 0.1 - 50 km
+                        </p>
                     </section>
 
                     {/* Calories Input */}

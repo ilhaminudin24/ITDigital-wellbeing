@@ -7,9 +7,9 @@ interface Activity {
     date: { day: number; month: string };
     title: string;
     calories: number;
+    distance: number;
     photo?: string;
-    startPoint: string;
-    endPoint: string;
+    location: string;
 }
 
 interface ActivityDetailModalProps {
@@ -176,30 +176,29 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
                             </div>
                         </div>
 
-                        {/* Route Timeline */}
-                        <div className="mb-8 relative">
-                            <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide opacity-80">Route</h3>
-                            <div className="flex flex-col gap-0 pl-2">
-                                {/* Start Point */}
-                                <div className="flex gap-4 relative">
-                                    <div className="flex flex-col items-center">
-                                        <div className="w-4 h-4 rounded-full border-[3px] border-emerald-500 bg-white z-10"></div>
-                                        <div className="w-0.5 h-full bg-gray-200 absolute top-4 bottom-[-20px]"></div>
+                        {/* Activity Info */}
+                        <div className="mb-8">
+                            <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide opacity-80">Activity Info</h3>
+                            <div className="flex flex-col gap-4">
+                                {/* Location */}
+                                <div className="flex items-start gap-4 bg-gray-50 rounded-xl p-4">
+                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-primary">location_on</span>
                                     </div>
-                                    <div className="pb-8">
-                                        <div className="text-sm font-bold text-slate-900">{activity?.startPoint || "Start Point"}</div>
-                                        <div className="text-xs text-slate-500">Start Point</div>
+                                    <div>
+                                        <div className="text-xs text-slate-500 mb-1">Exercise Location</div>
+                                        <div className="text-sm font-bold text-slate-900">{activity?.location || "Location"}</div>
                                     </div>
                                 </div>
 
-                                {/* End Point */}
-                                <div className="flex gap-4">
-                                    <div className="flex flex-col items-center">
-                                        <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow-sm z-10"></div>
+                                {/* Distance */}
+                                <div className="flex items-start gap-4 bg-gray-50 rounded-xl p-4">
+                                    <div className="w-10 h-10 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-primary">straighten</span>
                                     </div>
                                     <div>
-                                        <div className="text-sm font-bold text-slate-900">{activity?.endPoint || "End Point"}</div>
-                                        <div className="text-xs text-slate-500">Destination</div>
+                                        <div className="text-xs text-slate-500 mb-1">Jarak (Distance)</div>
+                                        <div className="text-sm font-bold text-slate-900">{activity?.distance || 0} km</div>
                                     </div>
                                 </div>
                             </div>

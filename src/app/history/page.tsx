@@ -17,9 +17,9 @@ interface Activity {
     date: { day: number; month: string };
     title: string;
     calories: number;
+    distance: number;
     photo?: string;
-    startPoint: string;
-    endPoint: string;
+    location: string;
 }
 
 export default function HistoryPage() {
@@ -38,11 +38,11 @@ export default function HistoryPage() {
                 day: date.getDate(),
                 month: monthNames[date.getMonth()]
             },
-            title: `${act.locationFrom} → ${act.locationTo}`,
+            title: act.location,
             calories: act.calories,
+            distance: act.distance,
             photo: act.photo || undefined,
-            startPoint: act.locationFrom,
-            endPoint: act.locationTo,
+            location: act.location,
         };
     };
 

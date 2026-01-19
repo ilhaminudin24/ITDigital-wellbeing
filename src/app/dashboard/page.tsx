@@ -128,10 +128,10 @@ export default function Dashboard() {
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-text-dark font-medium">
-                                                {activity.locationFrom} → {activity.locationTo}
+                                                {activity.location}
                                             </p>
                                             <p className="text-text-muted text-xs">
-                                                {new Date(activity.date).toLocaleDateString('en-US', {
+                                                {activity.distance} km • {new Date(activity.date).toLocaleDateString('en-US', {
                                                     month: 'short',
                                                     day: 'numeric',
                                                     year: 'numeric'

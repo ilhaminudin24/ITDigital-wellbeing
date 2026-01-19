@@ -12,7 +12,7 @@
 ### Key Features
 - 🔐 **Authentication** - Login dengan Coworker ID/Email + Profile Onboarding
 - 📊 **Dashboard** - Progress ring kalori tahunan dan status bulanan
-- 📝 **Record Activity** - Input lokasi A ke B, kalori manual, upload foto
+- 📝 **Record Activity** - Input lokasi, jarak (km), kalori manual, upload foto
 - 📋 **History** - Riwayat aktivitas dengan filter bulan
 - 📈 **Report** - Visualisasi bar chart kalori per bulan
 - 👤 **Profile** - Edit profil fisik, recalculate target, statistik personal
@@ -110,32 +110,37 @@ flowchart TD
     subgraph Input["📝 Input Phase"]
         A[🏠 Dashboard] -->|Click Record Activity| B[📍 Record Page]
         B --> C[📅 Select Date]
-        C --> D[📍 Input Location From]
-        D --> E[🏁 Input Location To]
+        C --> D[📍 Input Exercise Location]
+    end
+
+    subgraph Distance["📏 Distance Input"]
+        D --> E[Set Jarak 0.1-50 km]
+        E --> F[Use +/- buttons or type]
     end
 
     subgraph Calories["🔥 Calories Input"]
-        E --> F[Set Calories 10-1000]
-        F --> G[Use +/- buttons or type]
+        F --> G[Set Calories 10-1000]
+        G --> H[Use +/- buttons or type]
     end
 
     subgraph Evidence["📸 Evidence Phase"]
-        G --> H[📷 Upload Activity Photo]
-        H --> I{Photo Uploaded?}
-        I -->|No| J[❌ Show Error Message]
-        J --> H
-        I -->|Yes| K[✅ Enable Save Button]
+        H --> I[📷 Upload Activity Photo]
+        I --> J{Photo Uploaded?}
+        J -->|No| K[❌ Show Error Message]
+        K --> I
+        J -->|Yes| L[✅ Enable Save Button]
     end
 
     subgraph Save["💾 Save Phase"]
-        K --> L[Click SAVE ACTIVITY]
-        L --> M[Add to localStorage]
-        M --> N[Update totalCalories]
-        N --> O[✅ Success Toast]
-        O --> P[🏠 Redirect to Dashboard]
+        L --> M[Click SAVE ACTIVITY]
+        M --> N[Add to localStorage]
+        N --> O[Update totalCalories]
+        O --> P[✅ Success Toast]
+        P --> Q[🏠 Redirect to Dashboard]
     end
 
     style Input fill:#e3f2fd
+    style Distance fill:#f3e5f5
     style Calories fill:#fff3e0
     style Evidence fill:#fce4ec
     style Save fill:#e8f5e9
@@ -257,15 +262,16 @@ flowchart TD
 
 **Features:**
 - Date picker untuk tanggal aktivitas
-- Location From (text input)
-- Location To (text input)
+- Exercise Location (text input - single field)
+- Jarak/Distance input dengan +/- buttons (0.1-50 km range)
 - Calories input dengan +/- buttons (10-1000 range)
 - Photo upload (mandatory) dengan preview
 - Save ke localStorage
 
 **State Management:**
 - `date` - Selected date
-- `locationFrom`, `locationTo` - Location texts
+- `location` - Exercise location text
+- `distance` - Distance in km (number)
 - `calories` - Manual calories input (number)
 - `photo` - Uploaded photo (base64)
 - `status` - 'idle' | 'saving' | 'success'
@@ -309,9 +315,9 @@ interface Activity {
     date: { day: number; month: string };
     title: string;
     calories: number;
+    distance: number;
     photo?: string;
-    startPoint: string;
-    endPoint: string;
+    location: string;
 }
 ```
 
@@ -474,20 +480,20 @@ classDiagram
 
 ### Target Calculation
 
-| Metric | Formula | Example |
-|--------|---------|---------|
-| **Yearly Target** | BMR × 1.55 × 0.2 × 250 | ~133,000 cal |
-| **Monthly Target** | Yearly / 12 | ~11,000 cal |
+| Metric | Formula | Example (BMR = 1,717 cal/day) |
+|--------|---------|-------------------------------|
+| **Weekly Target** | BMR × 15% | ~258 cal |
+| **Yearly Target** | Weekly × 52 | ~13,400 cal |
+| **Monthly Target** | Yearly / 12 | ~1,116 cal |
 | **Progress %** | (totalCalories / targetCalories) × 100 | 45% |
-| **Remaining** | targetCalories - totalCalories | 70,000 cal |
+| **Remaining** | targetCalories - totalCalories | 7,000 cal |
 
 ### Formula Explanation (Tooltip)
 ```
 Target kalori dihitung berdasarkan:
 • BMR (Basal Metabolic Rate) - kalori dasar tubuh
-• × 1.55 (Activity Factor untuk aktivitas sedang)
-• × 0.2 (Porsi kalori dari walking activity)
-• × 250 (Hari kerja per tahun)
+• × 15% = Target mingguan
+• × 52 minggu = Target tahunan
 ```
 
 ---
@@ -515,8 +521,8 @@ interface User {
 interface Activity {
   id: string;
   date: string;        // ISO date (YYYY-MM-DD)
-  locationFrom: string;
-  locationTo: string;
+  location: string;    // Exercise location
+  distance: number;    // Distance in km
   calories: number;    // 10-1000 range
   photo: string;       // base64
   createdAt: string;   // ISO datetime

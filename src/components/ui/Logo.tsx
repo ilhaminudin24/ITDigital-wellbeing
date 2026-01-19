@@ -21,7 +21,7 @@ export default function Logo({ size = "md", withText = false, className = "" }: 
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             <Image
-                src="/logo.png"
+                src="/ITDigital-wellbeing/logo.png"
                 alt="IT&Digital Wellbeing Monitor Logo"
                 width={pixelSize}
                 height={pixelSize}

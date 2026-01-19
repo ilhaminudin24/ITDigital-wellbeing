@@ -16,8 +16,13 @@ const notoSans = Noto_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Activity Dashboard",
-  description: "Wellbeing Monitoring App",
+  title: "IT&Digital Wellbeing Monitor",
+  description: "Aplikasi Monitoring Aktivitas Jalan Kaki untuk Tim IT & Digital IKEA Indonesia",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -28,6 +33,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/icon.png" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
       </head>
       <body

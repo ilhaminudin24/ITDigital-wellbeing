@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import Logo from "@/components/ui/Logo";
 import {
     getUser,
     getYearlyCaloriesByMonth,
@@ -54,11 +55,14 @@ export default function ReportPage() {
             <div className="w-full max-w-lg flex flex-col flex-grow pb-28">
                 {/* Header */}
                 <header className="flex items-center justify-between px-6 py-6 pt-8 bg-white shadow-sm mb-4">
-                    <div className="flex flex-col">
-                        <h2 className="text-primary text-2xl font-bold leading-tight tracking-tight">
-                            Progress Report
-                        </h2>
-                        <p className="text-text-muted text-sm font-medium">Track your achievements</p>
+                    <div className="flex items-center gap-3">
+                        <Logo size="md" />
+                        <div className="flex flex-col">
+                            <h2 className="text-primary text-xl font-bold leading-tight tracking-tight">
+                                Progress Report
+                            </h2>
+                            <p className="text-text-muted text-sm font-medium">Track your achievements</p>
+                        </div>
                     </div>
                     <div
                         className="h-10 w-10 rounded-full bg-surface bg-cover bg-center border border-border-light cursor-pointer shadow-sm"

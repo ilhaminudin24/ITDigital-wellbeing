@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
 import clsx from "clsx";
 import { addActivity } from "@/lib/userData";
+import Logo from "@/components/ui/Logo";
 
 export default function RecordPage() {
     const router = useRouter();
@@ -90,9 +91,12 @@ export default function RecordPage() {
         <div className="relative flex min-h-screen w-full flex-col items-center bg-[#f5f5f5] text-black font-display overflow-x-hidden selection:bg-accent selection:text-primary">
             <div className="w-full max-w-lg flex flex-col flex-grow pb-28 relative bg-[#f5f5f5]">
                 <header className="flex items-center justify-between px-6 py-6 pt-8 bg-white shadow-sm mb-4">
-                    <div className="flex flex-col">
-                        <h1 className="text-primary text-2xl font-bold leading-tight tracking-tight">Record Activity</h1>
-                        <p className="text-text-muted text-sm">Log your walking calories</p>
+                    <div className="flex items-center gap-3">
+                        <Logo size="md" />
+                        <div className="flex flex-col">
+                            <h1 className="text-primary text-xl font-bold leading-tight tracking-tight">Record Activity</h1>
+                            <p className="text-text-muted text-sm">Log your walking calories</p>
+                        </div>
                     </div>
                     <button
                         onClick={() => router.push('/dashboard')}

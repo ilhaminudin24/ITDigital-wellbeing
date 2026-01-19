@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import Logo from "@/components/ui/Logo";
 import {
     getUser,
     updateUserProfile,
@@ -82,9 +83,12 @@ export default function Profile() {
             <div className="w-full max-w-lg flex flex-col flex-grow pb-28">
                 {/* Header */}
                 <header className="flex items-center justify-between px-6 py-6 pt-8 bg-white shadow-sm mb-6">
-                    <div className="flex flex-col">
-                        <h1 className="text-primary text-2xl font-bold leading-tight tracking-tight">Profile</h1>
-                        <p className="text-text-muted text-sm font-medium">Manage your account</p>
+                    <div className="flex items-center gap-3">
+                        <Logo size="md" />
+                        <div className="flex flex-col">
+                            <h1 className="text-primary text-xl font-bold leading-tight tracking-tight">Profile</h1>
+                            <p className="text-text-muted text-sm font-medium">Manage your account</p>
+                        </div>
                     </div>
                     <button className="relative w-10 h-10 overflow-hidden border border-gray-100 rounded-full shadow-sm">
                         <Image
@@ -377,11 +381,19 @@ export default function Profile() {
                     {/* Sign Out Button */}
                     <button
                         onClick={handleSignOut}
-                        className="flex items-center justify-center w-full gap-2 px-4 py-4 mt-2 mb-8 text-lg font-bold text-white transition-all shadow-lg rounded-2xl bg-primary hover:bg-blue-800 hover:shadow-xl group"
+                        className="flex items-center justify-center w-full gap-2 px-4 py-4 mt-2 text-lg font-bold text-white transition-all shadow-lg rounded-2xl bg-primary hover:bg-blue-800 hover:shadow-xl group"
                     >
                         <span className="text-[24px] material-symbols-outlined">logout</span>
                         Sign Out
                     </button>
+
+                    {/* Footer with Logo */}
+                    <footer className="flex flex-col items-center gap-3 py-6 mt-4 mb-8">
+                        <Logo size="sm" />
+                        <p className="text-xs text-slate-400 text-center">
+                            © IT & Digital Indonesia 2026
+                        </p>
+                    </footer>
                 </main>
             </div>
         </div>

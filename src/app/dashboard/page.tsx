@@ -12,6 +12,7 @@ import {
     User,
     Activity,
 } from "@/lib/userData";
+import Logo from "@/components/ui/Logo";
 
 export default function Dashboard() {
     const router = useRouter();
@@ -42,8 +43,11 @@ export default function Dashboard() {
 
     if (isLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-background-light">
-                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            <div className="flex min-h-screen flex-col items-center justify-center bg-background-light gap-4">
+                <div className="animate-pulse">
+                    <Logo size="xl" />
+                </div>
+                <p className="text-sm text-slate-500 animate-pulse">Loading...</p>
             </div>
         );
     }
@@ -52,13 +56,16 @@ export default function Dashboard() {
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">
             <div className="w-full max-w-lg flex flex-col flex-grow pb-28">
                 <header className="flex items-center justify-between px-6 py-6 pt-8 bg-white shadow-sm mb-4">
-                    <div className="flex flex-col">
-                        <h2 className="text-primary text-2xl font-bold leading-tight tracking-tight">
-                            Halo, {user?.name || 'Coworker'}!
-                        </h2>
-                        <p className="text-text-muted text-sm font-medium">
-                            Let's hit that {((user?.targetCalories || 0) / 1000).toFixed(0)}K cal goal.
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <Logo size="md" />
+                        <div className="flex flex-col">
+                            <h2 className="text-primary text-xl font-bold leading-tight tracking-tight">
+                                Halo, {user?.name || 'Coworker'}!
+                            </h2>
+                            <p className="text-text-muted text-sm font-medium">
+                                Let's hit that {((user?.targetCalories || 0) / 1000).toFixed(0)}K cal goal.
+                            </p>
+                        </div>
                     </div>
                     <div className="flex gap-3">
                         <button

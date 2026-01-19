@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import MonthSummary from "@/components/history/MonthSummary";
 import ActivityList from "@/components/history/ActivityList";
 import ActivityDetailModal from "@/components/history/ActivityDetailModal";
+import Logo from "@/components/ui/Logo";
 import {
     getUser,
     getActivities,
@@ -95,13 +96,16 @@ export default function HistoryPage() {
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">
             <div className="w-full max-w-lg flex flex-col flex-grow pb-28">
                 <header className="flex items-center justify-between px-6 py-6 pt-8 bg-white shadow-sm mb-4">
-                    <div className="flex flex-col">
-                        <h2 className="text-primary text-2xl font-bold leading-tight tracking-tight">
-                            Activity History
-                        </h2>
-                        <p className="text-text-muted text-sm font-medium">
-                            Keep track of your progress.
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <Logo size="md" />
+                        <div className="flex flex-col">
+                            <h2 className="text-primary text-xl font-bold leading-tight tracking-tight">
+                                Activity History
+                            </h2>
+                            <p className="text-text-muted text-sm font-medium">
+                                Keep track of your progress.
+                            </p>
+                        </div>
                     </div>
                     <div
                         className="h-10 w-10 rounded-full bg-surface bg-cover bg-center border border-border-light cursor-pointer shadow-sm"

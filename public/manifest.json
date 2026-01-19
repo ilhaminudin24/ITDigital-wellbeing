@@ -1,0 +1,16 @@
+{
+    "name": "IT Digital Wellbeing Monitor",
+    "short_name": "Wellbeing",
+    "description": "Aplikasi Monitoring Aktivitas Jalan Kaki untuk Tim IT & Digital IKEA Indonesia",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f5f5f5",
+    "theme_color": "#0058a3",
+    "icons": [
+        {
+            "src": "/icon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

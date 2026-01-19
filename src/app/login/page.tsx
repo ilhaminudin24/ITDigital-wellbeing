@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import Logo from "@/components/ui/Logo";
 import {
     getUser,
     createUser,
@@ -91,19 +92,7 @@ export default function LoginPage() {
             <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background-light text-slate-900 font-display">
                 {/* Header */}
                 <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4 lg:px-10">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-14 items-center justify-center bg-ikea-blue">
-                            <div className="size-2.5 rounded-full bg-ikea-yellow"></div>
-                        </div>
-                        <div className="flex flex-col">
-                            <h2 className="text-sm font-bold leading-tight tracking-tight text-slate-900 lg:text-base">
-                                Wellbeing Monitor
-                            </h2>
-                            <span className="text-xs text-slate-500">
-                                IT & Digital Indonesia
-                            </span>
-                        </div>
-                    </div>
+                    <Logo size="md" withText />
                     <button
                         onClick={() => setStep('login')}
                         className="flex items-center gap-1 text-sm text-slate-500 hover:text-primary"
@@ -302,19 +291,7 @@ export default function LoginPage() {
         <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background-light text-slate-900 font-display">
             {/* Header */}
             <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4 lg:px-10">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-14 items-center justify-center bg-ikea-blue">
-                        <div className="size-2.5 rounded-full bg-ikea-yellow"></div>
-                    </div>
-                    <div className="flex flex-col">
-                        <h2 className="text-sm font-bold leading-tight tracking-tight text-slate-900 lg:text-base">
-                            Wellbeing Monitor
-                        </h2>
-                        <span className="text-xs text-slate-500">
-                            IT & Digital Indonesia
-                        </span>
-                    </div>
-                </div>
+                <Logo size="md" withText />
                 <button className="hidden sm:flex group cursor-pointer items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/20 hover:text-primary">
                     <span className="material-symbols-outlined text-[20px] text-primary">
                         help
@@ -344,7 +321,11 @@ export default function LoginPage() {
                         </div>
 
                         <div className="relative z-10">
-                            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+                            {/* Logo in Hero */}
+                            <div className="mb-6">
+                                <Logo size="xl" />
+                            </div>
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
                                 <span className="material-symbols-outlined text-[16px]">
                                     directions_walk
                                 </span>

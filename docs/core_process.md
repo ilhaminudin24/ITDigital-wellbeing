@@ -10,12 +10,12 @@
 **ITDigital Wellbeing Monitor v2** adalah aplikasi web mobile-friendly berbasis Next.js 16 yang dirancang untuk membantu tim IT & Digital IKEA Indonesia memantau aktivitas jalan kaki mereka berdasarkan **kalori terbakar**. Target tahunan dihitung secara personal berdasarkan profil fisik masing-masing coworker (weight/height/age/gender).
 
 ### Key Features
-- 🔐 **Authentication** - Login dengan Coworker ID/Email + Profile Onboarding
+- 🔐 **Authentication** - Login dengan NIK/Email + Password via Supabase Auth
 - 📊 **Dashboard** - Progress ring kalori tahunan dan status bulanan
 - 📝 **Record Activity** - Input lokasi, jarak (km), kalori manual, upload foto
-- 📋 **History** - Riwayat aktivitas dengan filter bulan
+- 📋 **History** - Riwayat aktivitas dengan filter 12 bulan + hapus aktivitas
 - 📈 **Report** - Visualisasi bar chart kalori per bulan
-- 👤 **Profile** - Edit profil fisik, recalculate target, statistik personal
+- 👤 **Profile** - Edit profil fisik, avatar upload, recalculate target
 
 ---
 
@@ -29,7 +29,8 @@
 | React | 19.2.1 | UI Library |
 | TypeScript | ^5 | Type Safety |
 | Tailwind CSS | ^4 | Mobile-first Styling |
-| localStorage | - | Data Persistence |
+| Supabase | - | Backend (Auth, PostgreSQL, Storage) |
+| @supabase/ssr | - | SSR Cookie-based Auth |
 | clsx | ^2.1.1 | Conditional CSS Classes |
 | Material Symbols | - | Icon System |
 
@@ -41,27 +42,26 @@ ITDigital-wellbeing/
 ├── src/
 │   ├── app/                   # Next.js App Router pages
 │   │   ├── layout.tsx         # Root layout with BottomNav
-│   │   ├── page.tsx           # Entry point (redirects to Login)
+│   │   ├── page.tsx           # Entry point (redirects)
 │   │   ├── globals.css        # Global styles & theme
-│   │   ├── login/page.tsx     # Authentication + Profile Onboarding
-│   │   ├── dashboard/page.tsx # Main dashboard (calories progress)
-│   │   ├── record/page.tsx    # Activity recording (manual calories)
-│   │   ├── history/page.tsx   # Activity history (calories view)
-│   │   ├── report/page.tsx    # Progress reports (calories charts)
-│   │   └── profile/page.tsx   # User profile & body settings
+│   │   ├── auth/callback/     # OAuth callback route
+│   │   ├── login/page.tsx     # Auth + Profile Onboarding
+│   │   ├── dashboard/page.tsx # Main dashboard
+│   │   ├── record/page.tsx    # Activity recording
+│   │   ├── history/page.tsx   # Activity history + delete
+│   │   ├── report/page.tsx    # Progress reports
+│   │   └── profile/page.tsx   # User profile + avatar
 │   ├── components/
-│   │   ├── layout/
-│   │   │   └── BottomNav.tsx  # Fixed bottom navigation
+│   │   ├── layout/BottomNav.tsx
 │   │   ├── dashboard/
-│   │   │   ├── ProgressRing.tsx   # Circular calories progress
-│   │   │   └── MonthlyStatus.tsx  # Monthly calories goal card
-│   │   └── history/
-│   │       ├── MonthSummary.tsx       # Month calories summary
-│   │       ├── ActivityList.tsx       # Activity list with filter
-│   │       ├── ActivityItem.tsx       # Single activity card (calories)
-│   │       └── ActivityDetailModal.tsx # Activity detail modal
-│   └── lib/
-│       └── userData.ts        # Data service (BMR calc, localStorage)
+│   │   ├── history/
+│   │   └── ui/Logo.tsx
+│   ├── lib/
+│   │   ├── supabase/          # Supabase clients
+│   │   ├── hooks/             # useAuth, useProfile, useActivities
+│   │   ├── services/          # auth, profile, activity, storage
+│   │   └── userData.ts        # BMR calculations
+│   └── middleware.ts          # Auth middleware
 ├── package.json
 ├── tailwind.config.ts
 └── next.config.ts
@@ -76,17 +76,17 @@ ITDigital-wellbeing/
 ```mermaid
 flowchart TD
     subgraph Entry["🚀 App Entry"]
-        A[Open App] --> B{Has Profile?}
+        A[Open App] --> B{Has Session?}
         B -->|No| C[📱 Login Page]
-        B -->|Yes| D[📊 Dashboard]
+        B -->|Yes| D{Profile Complete?}
+        D -->|No| H[📝 Profile Setup]
+        D -->|Yes| E[📊 Dashboard]
     end
 
     subgraph Auth["🔐 Authentication"]
-        C --> E[Input Email/Password]
-        E --> F[Click LOGIN]
-        F --> G{Profile Complete?}
-        G -->|No| H[📝 Profile Setup]
-        G -->|Yes| D
+        C --> F[Input NIK/Email + Password]
+        F --> G[Click LOGIN]
+        G --> D
     end
 
     subgraph Profile["👤 Profile Setup"]
@@ -94,8 +94,8 @@ flowchart TD
         I --> J[Input Weight/Height/Age]
         J --> K[View Target Preview with Tooltip]
         K --> L[START MY JOURNEY]
-        L --> M[Save to localStorage]
-        M --> D
+        L --> M[Save to Supabase]
+        M --> E
     end
 
     style Entry fill:#e3f2fd
@@ -133,10 +133,11 @@ flowchart TD
 
     subgraph Save["💾 Save Phase"]
         L --> M[Click SAVE ACTIVITY]
-        M --> N[Add to localStorage]
-        N --> O[Update totalCalories]
-        O --> P[✅ Success Toast]
-        P --> Q[🏠 Redirect to Dashboard]
+        M --> N[Upload to Supabase Storage]
+        N --> O[Create Activity Record]
+        O --> P[Auto-update totalCalories]
+        P --> Q[✅ Success Toast]
+        Q --> R[🏠 Redirect to Dashboard]
     end
 
     style Input fill:#e3f2fd
@@ -155,25 +156,36 @@ flowchart LR
         B[Components]
     end
 
-    subgraph Service["⚙️ Service Layer"]
-        C[userData.ts]
-        D[BMR Calculation]
+    subgraph Hooks["🪝 Hooks Layer"]
+        C[useAuth]
+        D[useProfile]
+        E[useActivities]
     end
 
-    subgraph Storage["💾 Storage Layer"]
-        E[localStorage: wellbeing-user]
-        F[localStorage: wellbeing-activities]
+    subgraph Service["⚙️ Service Layer"]
+        F[auth.service]
+        G[profile.service]
+        H[activity.service]
+        I[storage.service]
+    end
+
+    subgraph Backend["🔋 Supabase"]
+        J[Auth]
+        K[PostgreSQL + RLS]
+        L[Storage]
     end
 
     A --> B
-    B <--> C
-    C --> D
-    C <--> E
-    C <--> F
+    B --> C & D & E
+    C --> F --> J
+    D --> G --> K
+    E --> H --> K
+    H --> I --> L
 
     style UI fill:#e3f2fd
-    style Service fill:#fff3e0
-    style Storage fill:#e8f5e9
+    style Hooks fill:#fff3e0
+    style Service fill:#f3e5f5
+    style Backend fill:#e8f5e9
 ```
 
 ---
@@ -185,36 +197,14 @@ flowchart LR
 **Purpose:** Autentikasi dan onboarding profil user baru
 
 **Features:**
-- Input Coworker ID / Email
+- Input NIK (Nomor Induk Karyawan) atau Email
 - Input Password dengan visibility toggle
+- Password reset untuk first-time login
 - Multi-step form: Login → Profile Setup
 - Profile fields: Gender, Weight, Height, Age
 - Auto BMR calculation dengan target preview
 - Tooltip menjelaskan formula perhitungan
 - Social proof (jumlah coworkers yang sudah join)
-
-```mermaid
-flowchart TD
-    A[Login Page] --> B[Header]
-    A --> C[Visual Panel]
-    A --> D[Form Panel]
-    
-    subgraph Login["Step 1: Login"]
-        D --> D1[Email Input]
-        D --> D2[Password Input]
-        D --> D3[Login Button]
-    end
-    
-    subgraph Profile["Step 2: Profile"]
-        D --> D4[Gender Select]
-        D --> D5[Weight/Height/Age]
-        D --> D6[Target Preview + Tooltip]
-        D --> D7[Start Journey Button]
-    end
-
-    style Login fill:#e3f2fd
-    style Profile fill:#e8f5e9
-```
 
 ---
 
@@ -233,27 +223,6 @@ flowchart TD
 - `ProgressRing` - SVG circular progress (calories)
 - `MonthlyStatus` - Monthly calorie goal card
 
-```mermaid
-flowchart TD
-    A[Dashboard Page] --> B[Header]
-    A --> C[ProgressRing]
-    A --> D[MonthlyStatus]
-    A --> E[Record Button]
-    A --> F[Recent Activities]
-    
-    C --> C1[currentCalories / targetCalories]
-    C --> C2[Percentage Badge]
-    
-    D --> D1[Monthly Calories]
-    D --> D2[Monthly Target = yearly/12]
-    
-    F --> F1[Activity Cards with Calories]
-
-    style A fill:#0058a3,color:#fff
-    style C fill:#ffdb00
-    style D fill:#e3f2fd
-```
-
 ---
 
 ### 3. Record Activity Page (`/record`)
@@ -264,32 +233,9 @@ flowchart TD
 - Date picker untuk tanggal aktivitas
 - Exercise Location (text input - single field)
 - Jarak/Distance input dengan +/- buttons (0.1-50 km range)
-- Calories input dengan +/- buttons (10-1000 range)
+- Calories input dengan +/- buttons atau manual input (10-1000 range)
 - Photo upload (mandatory) dengan preview
-- Save ke localStorage
-
-**State Management:**
-- `date` - Selected date
-- `location` - Exercise location text
-- `distance` - Distance in km (number)
-- `calories` - Manual calories input (number)
-- `photo` - Uploaded photo (base64)
-- `status` - 'idle' | 'saving' | 'success'
-
-```mermaid
-stateDiagram-v2
-    [*] --> Idle
-    Idle --> InputtingData: User fills form
-    InputtingData --> CaloriesSet: Set calories
-    CaloriesSet --> PhotoRequired: Calories OK
-    PhotoRequired --> PhotoUploaded: Upload photo
-    PhotoUploaded --> Saving: Click Save
-    Saving --> Success: localStorage saved
-    Success --> [*]: Redirect to Dashboard
-    
-    PhotoRequired --> Error: Save without photo
-    Error --> PhotoRequired: Clear error
-```
+- Save ke Supabase database + Storage
 
 ---
 
@@ -298,28 +244,17 @@ stateDiagram-v2
 **Purpose:** Menampilkan riwayat semua aktivitas yang tercatat
 
 **Features:**
-- Month filter dropdown (2026)
+- Month filter dropdown (semua 12 bulan)
 - Total calories summary card
 - Activity list dengan scroll
-- Click activity untuk detail modal (calories view)
+- Click activity untuk detail modal
+- **Delete activity** dengan confirmation
 - Loading state saat switch bulan
 
 **Components Used:**
 - `MonthSummary` - Total calories summary
 - `ActivityList` - List container dengan filter
-- `ActivityDetailModal` - Slide-up modal (calories display)
-
-**Data Structure:**
-```typescript
-interface Activity {
-    date: { day: number; month: string };
-    title: string;
-    calories: number;
-    distance: number;
-    photo?: string;
-    location: string;
-}
-```
+- `ActivityDetailModal` - Slide-up modal + delete
 
 ---
 
@@ -334,19 +269,6 @@ interface Activity {
 - Statistics grid (Avg/Month, Best Month)
 - Remaining calories to goal dengan CTA
 
-**Chart Types:**
-1. **Linear Progress Bar** - Yearly completion percentage
-2. **Bar Chart** - Monthly calories (dynamic from localStorage)
-
-```mermaid
-xychart-beta
-    title "Monthly Calories - 2026"
-    x-axis [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
-    y-axis "Calories" 0 --> 15000
-    bar [8000, 7500, 11000, 9000, 7000, 9500, 0, 0, 0, 0, 0, 0]
-    line [10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600]
-```
-
 ---
 
 ### 6. Profile Page (`/profile`)
@@ -354,7 +276,7 @@ xychart-beta
 **Purpose:** Informasi user, edit profil fisik, dan pengaturan
 
 **Features:**
-- Profile card dengan avatar, nama, dan badges
+- Profile card dengan avatar upload, nama, dan badges
 - Body Profile section (editable)
   - Gender, Weight, Height, Age
   - Save & Recalculate button
@@ -362,29 +284,7 @@ xychart-beta
 - Progress percentage
 - Settings toggles (Notifications, Email Digest)
 - Navigation links (Help & Support, Privacy & Data)
-- Sign Out button (clears localStorage)
-
-```mermaid
-flowchart TD
-    A[Profile Page] --> B[Header]
-    A --> C[Profile Card]
-    A --> D[Body Profile Section]
-    A --> E[Calorie Target Card]
-    A --> F[Settings Section]
-    A --> G[Sign Out Button]
-    
-    D --> D1[Gender/Weight/Height/Age]
-    D --> D2[Edit Button]
-    D --> D3[Save & Recalculate]
-    
-    E --> E1[Target Calories]
-    E --> E2[Progress %]
-    E --> E3[Formula Tooltip]
-
-    style A fill:#0058a3,color:#fff
-    style D fill:#e8f5e9
-    style E fill:#fff3e0
-```
+- Sign Out button (clears session)
 
 ---
 
@@ -418,53 +318,20 @@ flowchart TD
         G --> L[MonthSummary - calories]
         G --> M[ActivityList]
         M --> N[ActivityItem - calories]
-        G --> O[ActivityDetailModal - calories]
+        G --> O[ActivityDetailModal + Delete]
     end
 
-    subgraph Services["⚙️ Services"]
-        P[userData.ts]
-        P --> Q[BMR Calculation]
-        P --> R[localStorage CRUD]
+    subgraph Hooks["🪝 Hooks"]
+        P[useAuth]
+        Q[useProfile]
+        R[useActivities]
     end
 
     style Root fill:#e3f2fd
     style Pages fill:#fff3e0
     style Dashboard_Components fill:#e8f5e9
     style History_Components fill:#fce4ec
-    style Services fill:#f3e5f5
-```
-
-### Component Props Interface
-
-```mermaid
-classDiagram
-    class ProgressRing {
-        +number currentCalories
-        +number targetCalories
-        +render() JSX
-    }
-    
-    class MonthlyStatus {
-        +number currentCalories
-        +number targetCalories
-        +render() JSX
-    }
-    
-    class MonthSummary {
-        +number totalCalories
-        +number monthlyTarget
-        +string month
-        +render() JSX
-    }
-    
-    class ActivityItem {
-        +object date
-        +string title
-        +number calories
-        +string photo
-        +boolean isLast
-        +render() JSX
-    }
+    style Hooks fill:#f3e5f5
 ```
 
 ---
@@ -488,44 +355,41 @@ classDiagram
 | **Progress %** | (totalCalories / targetCalories) × 100 | 45% |
 | **Remaining** | targetCalories - totalCalories | 7,000 cal |
 
-### Formula Explanation (Tooltip)
-```
-Target kalori dihitung berdasarkan:
-• BMR (Basal Metabolic Rate) - kalori dasar tubuh
-• × 15% = Target mingguan
-• × 52 minggu = Target tahunan
-```
-
 ---
 
-## 💾 Data Structure
+## 💾 Data Structure (Supabase)
 
-### User Object (localStorage: wellbeing-user)
+### User Profile
 ```typescript
-interface User {
+interface UserProfile {
   id: string;
-  email: string;
+  user_id: string;
+  nik: string | null;
   name: string;
   weight: number;      // kg
   height: number;      // cm
   age: number;
   gender: 'male' | 'female';
-  targetCalories: number;
-  totalCalories: number;
-  profileCompleted: boolean;
+  target_calories: number;
+  total_calories: number;
+  avatar_url: string | null;
+  profile_completed: boolean;
+  created_at: string;
+  updated_at: string;
 }
 ```
 
-### Activity Object (localStorage: wellbeing-activities)
+### Activity
 ```typescript
 interface Activity {
   id: string;
-  date: string;        // ISO date (YYYY-MM-DD)
-  location: string;    // Exercise location
-  distance: number;    // Distance in km
-  calories: number;    // 10-1000 range
-  photo: string;       // base64
-  createdAt: string;   // ISO datetime
+  user_id: string;
+  activity_date: string;  // YYYY-MM-DD
+  location: string;
+  distance: number;       // km
+  calories: number;
+  photo_url: string | null;
+  created_at: string;
 }
 ```
 
@@ -559,14 +423,19 @@ interface Activity {
 
 **ITDigital Wellbeing Monitor v2** telah diupgrade dengan:
 
+✅ **Supabase Backend** - Full cloud integration (Auth, DB, Storage)  
 ✅ **Personal Calorie Target** - BMR-based target untuk setiap coworker  
+✅ **NIK/Email Login** - Flexible authentication dengan Supabase Auth  
 ✅ **Onboarding Flow** - Profile setup dengan gender/weight/height/age  
 ✅ **Manual Calories Input** - 10-1000 cal per aktivitas  
-✅ **localStorage Persistence** - Data tersimpan dengan baik  
+✅ **Delete Activity** - Hapus aktivitas dari history page  
+✅ **Avatar Upload** - Upload foto profil ke Supabase Storage  
+✅ **12-Month Filter** - Filter aktivitas untuk semua bulan  
 ✅ **Formula Tooltip** - Penjelasan cara perhitungan target  
 ✅ **Editable Profile** - Update profil dan recalculate target  
 ✅ **Year 2026** - Semua tanggal diupdate  
+✅ **Vercel Deployment** - SSR dengan optimized performance  
 
 ---
 
-*Documentation generated on: January 19, 2026*
+*Documentation updated on: January 20, 2026*

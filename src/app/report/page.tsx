@@ -108,7 +108,7 @@ export default function ReportPage() {
 
                         {isYearDropdownOpen && (
                             <div className="absolute top-full right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-10 overflow-hidden flex flex-col w-24">
-                                {[2026, 2025].map((y) => (
+                                {[2026].map((y) => (
                                     <button
                                         key={y}
                                         onClick={() => { setYear(y); setIsYearDropdownOpen(false); }}

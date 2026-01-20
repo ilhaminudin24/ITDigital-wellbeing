@@ -759,7 +759,7 @@ function LoginContent() {
 
                             <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-slate-900 lg:text-5xl">
                                 IT & Digital <br />
-                                <span className="text-primary">Wellbeing MOnitor</span>
+                                <span className="text-primary">Wellbeing Monitor</span>
                             </h1>
 
                         </div>

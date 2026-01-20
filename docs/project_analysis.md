@@ -10,13 +10,14 @@
 **ITDigital Wellbeing Monitor** adalah aplikasi web mobile-friendly berbasis Next.js 16 yang dirancang untuk membantu tim IT & Digital IKEA Indonesia memantau dan mencatat aktivitas jalan kaki mereka berdasarkan **kalori terbakar**. Target tahunan dihitung secara personal menggunakan **Mifflin-St Jeor BMR formula** berdasarkan profil fisik masing-masing coworker.
 
 ### Key Features
-- 🔐 **Authentication** - Login dengan Coworker ID/Email + Profile Onboarding
+- 🔐 **Authentication** - Login dengan NIK/Email + Password via Supabase Auth
 - 📊 **Dashboard** - Progress ring kalori tahunan dan status bulanan
 - 📝 **Record Activity** - Input lokasi, jarak (km), kalori manual, upload foto
-- 📋 **History** - Riwayat aktivitas dengan filter bulan
+- 📋 **History** - Riwayat aktivitas dengan filter 12 bulan + hapus aktivitas
 - 📈 **Report** - Visualisasi bar chart kalori per bulan
-- 👤 **Profile** - Edit profil fisik, recalculate target, statistik personal
-- 💾 **Persistence** - Data tersimpan di localStorage
+- 👤 **Profile** - Edit profil fisik, avatar upload, recalculate target
+- 💾 **Backend** - Supabase (PostgreSQL, Storage, Auth)
+- 🚀 **Deployment** - Vercel dengan SSR support
 
 ---
 
@@ -30,7 +31,8 @@
 | React | 19.2.1 | UI Library |
 | TypeScript | ^5 | Type Safety |
 | Tailwind CSS | ^4 | Mobile-first Styling |
-| localStorage | - | Data Persistence |
+| Supabase | - | Backend (Auth, PostgreSQL, Storage) |
+| @supabase/ssr | - | SSR Cookie-based Auth |
 | clsx | ^2.1.1 | Conditional CSS Classes |
 | Material Symbols | - | Icon System |
 
@@ -42,30 +44,53 @@ ITDigital-wellbeing/
 ├── src/
 │   ├── app/                   # Next.js App Router pages
 │   │   ├── layout.tsx         # Root layout with BottomNav
-│   │   ├── page.tsx           # Entry point (redirects to Login)
+│   │   ├── page.tsx           # Entry point (redirects)
 │   │   ├── globals.css        # Global styles & theme
+│   │   ├── auth/
+│   │   │   └── callback/route.ts # OAuth callback handler
 │   │   ├── login/page.tsx     # Authentication + Profile Onboarding
 │   │   ├── dashboard/page.tsx # Main dashboard (calories progress)
 │   │   ├── record/page.tsx    # Activity recording (manual calories)
-│   │   ├── history/page.tsx   # Activity history (calories view)
+│   │   ├── history/page.tsx   # Activity history + delete feature
 │   │   ├── report/page.tsx    # Progress reports (calories charts)
-│   │   └── profile/page.tsx   # User profile & body settings
+│   │   └── profile/page.tsx   # User profile + avatar upload
 │   ├── components/
 │   │   ├── layout/
 │   │   │   └── BottomNav.tsx  # Fixed bottom navigation
 │   │   ├── dashboard/
 │   │   │   ├── ProgressRing.tsx   # Circular calories progress
 │   │   │   └── MonthlyStatus.tsx  # Monthly calorie goal card
-│   │   └── history/
-│   │       ├── MonthSummary.tsx       # Month calories summary
-│   │       ├── ActivityList.tsx       # Activity list with filter
-│   │       ├── ActivityItem.tsx       # Single activity card (calories)
-│   │       └── ActivityDetailModal.tsx # Activity detail modal
-│   └── lib/
-│       └── userData.ts        # Data service (BMR calc, localStorage)
+│   │   ├── history/
+│   │   │   ├── MonthSummary.tsx       # Month calories summary
+│   │   │   ├── ActivityList.tsx       # Activity list with filter
+│   │   │   ├── ActivityItem.tsx       # Single activity card
+│   │   │   └── ActivityDetailModal.tsx # Detail modal + delete
+│   │   └── ui/
+│   │       └── Logo.tsx       # Reusable logo component
+│   ├── lib/
+│   │   ├── supabase/          # Supabase client utilities
+│   │   │   ├── client.ts      # Browser client
+│   │   │   ├── server.ts      # Server client
+│   │   │   ├── middleware.ts  # Middleware client
+│   │   │   └── types.ts       # Database types
+│   │   ├── hooks/             # Custom React hooks
+│   │   │   ├── index.ts       # Export all hooks
+│   │   │   ├── useAuth.ts     # Authentication state
+│   │   │   ├── useProfile.ts  # User profile state
+│   │   │   └── useActivities.ts # Activities CRUD & filtering
+│   │   ├── services/          # API service layer
+│   │   │   ├── index.ts       # Export all services
+│   │   │   ├── auth.service.ts    # Auth operations
+│   │   │   ├── profile.service.ts # Profile CRUD
+│   │   │   ├── activity.service.ts # Activity CRUD
+│   │   │   └── storage.service.ts  # Photo upload/delete
+│   │   └── userData.ts        # BMR calculations & utilities
+│   └── middleware.ts          # Auth middleware (route protection)
 ├── docs/
 │   ├── project_analysis.md    # This file
-│   └── core_process.md        # Core process documentation
+│   ├── core_process.md        # Core process documentation
+│   └── Backend Plan Implementation.md
+├── vercel.json                # Vercel deployment config
 ├── package.json
 ├── tailwind.config.ts
 └── next.config.ts
@@ -80,43 +105,48 @@ ITDigital-wellbeing/
 ```mermaid
 flowchart TD
     subgraph Entry["🚀 App Entry"]
-        A[Open App] --> B{Has Profile?}
+        A[Open App] --> B{Has Session?}
         B -->|No| C[📱 Login Page]
-        B -->|Yes| D[📊 Dashboard]
+        B -->|Yes| D{Has Profile?}
+        D -->|No| E[📝 Profile Setup]
+        D -->|Yes| F[📊 Dashboard]
     end
 
     subgraph Auth["🔐 Authentication"]
-        C --> E[Input Email/Password]
-        E --> F[Click LOGIN]
-        F --> G{Profile Complete?}
-        G -->|No| H[📝 Profile Setup]
-        G -->|Yes| D
+        C --> G[Input NIK/Email + Password]
+        G --> H[Click LOGIN]
+        H --> I{Auth Success?}
+        I -->|No| J[Show Error]
+        J --> C
+        I -->|Yes| K{Profile Complete?}
+        K -->|No| E
+        K -->|Yes| F
     end
 
     subgraph Profile["👤 Profile Setup"]
-        H --> I[Select Gender]
-        I --> J[Input Weight/Height/Age]
-        J --> K[View Target Preview + Tooltip]
-        K --> L[START MY JOURNEY]
-        L --> M[Save to localStorage]
-        M --> D
+        E --> L[Select Gender]
+        L --> M[Input Weight/Height/Age]
+        M --> N[View Target Preview + Tooltip]
+        N --> O[START MY JOURNEY]
+        O --> P[Save to Supabase]
+        P --> F
     end
 
     subgraph Main["📱 Main Navigation"]
-        D --> N{User Action}
-        N -->|Record| O[📍 Record Page]
-        N -->|History| P[📋 History Page]
-        N -->|Report| Q[📈 Report Page]
-        N -->|Profile| R[👤 Profile Page]
+        F --> Q{User Action}
+        Q -->|Record| R[📍 Record Page]
+        Q -->|History| S[📋 History Page]
+        Q -->|Report| T[📈 Report Page]
+        Q -->|Profile| U[👤 Profile Page]
     end
 
     subgraph Actions["⚡ Quick Actions"]
-        O --> S[Save Activity]
-        S --> D
-        P --> T[View Activity Detail]
-        Q --> U[View Charts]
-        R --> V[Logout]
-        V --> C
+        R --> V[Save Activity to Supabase]
+        V --> F
+        S --> W[View/Delete Activity]
+        T --> X[View Charts]
+        U --> Y[Logout]
+        Y --> C
     end
 
     style Entry fill:#e3f2fd
@@ -156,10 +186,11 @@ flowchart TD
 
     subgraph Save["💾 Save Phase"]
         L --> M[Click SAVE ACTIVITY]
-        M --> N[Add to localStorage]
-        N --> O[Update totalCalories]
-        O --> P[✅ Success Toast]
-        P --> Q[🏠 Redirect to Dashboard]
+        M --> N[Upload Photo to Supabase Storage]
+        N --> O[Create Activity in Database]
+        O --> P[Trigger recalculate_user_calories]
+        P --> Q[✅ Success Toast]
+        Q --> R[🏠 Redirect to Dashboard]
     end
 
     style Input fill:#e3f2fd
@@ -178,25 +209,39 @@ flowchart LR
         B[Components]
     end
 
-    subgraph Service["⚙️ Service Layer"]
-        C[userData.ts]
-        D[BMR Calculation]
+    subgraph Hooks["🪝 Hooks Layer"]
+        C[useAuth]
+        D[useProfile]
+        E[useActivities]
     end
 
-    subgraph Storage["💾 Storage Layer"]
-        E[localStorage: wellbeing-user]
-        F[localStorage: wellbeing-activities]
+    subgraph Service["⚙️ Service Layer"]
+        F[auth.service]
+        G[profile.service]
+        H[activity.service]
+        I[storage.service]
+    end
+
+    subgraph Backend["🔋 Supabase Backend"]
+        J[Supabase Auth]
+        K[PostgreSQL + RLS]
+        L[Storage Bucket]
     end
 
     A --> B
-    B <--> C
-    C --> D
-    C <--> E
-    C <--> F
+    B --> C & D & E
+    C --> F
+    D --> G
+    E --> H
+    H --> I
+    F --> J
+    G & H --> K
+    I --> L
 
     style UI fill:#e3f2fd
-    style Service fill:#fff3e0
-    style Storage fill:#e8f5e9
+    style Hooks fill:#fff3e0
+    style Service fill:#e8f5e9
+    style Backend fill:#f3e5f5
 ```
 
 ---
@@ -208,19 +253,20 @@ flowchart LR
 **Purpose:** Autentikasi dan onboarding profil user baru
 
 **Features:**
-- Input Coworker ID / Email
+- Input NIK (Nomor Induk Karyawan) atau Email
 - Input Password dengan visibility toggle
+- Password reset flow untuk first-time login
 - Multi-step form: Login → Profile Setup
 - Profile fields: Gender, Weight, Height, Age
 - Auto BMR calculation dengan target preview
 - Tooltip menjelaskan formula perhitungan
 - Motivational message dengan walking time estimate
-- Social proof (jumlah coworkers yang sudah join)
 
-**UI Components:**
-- Header dengan branding IKEA
-- Split layout (Visual + Form) untuk desktop
-- Responsive mobile-first design
+**Authentication Flow:**
+- NIK detection (numeric = NIK, contains @ = email)
+- Lookup email by NIK from user_profiles table
+- Supabase Auth signInWithPassword
+- Session cookie management
 
 ```mermaid
 flowchart TD
@@ -229,16 +275,16 @@ flowchart TD
     A --> D[Form Panel]
     
     subgraph Login["Step 1: Login"]
-        D --> D1[Email Input]
+        D --> D1[NIK/Email Input]
         D --> D2[Password Input]
         D --> D3[Login Button]
+        D --> D4[First-time? Reset Password]
     end
     
     subgraph Profile["Step 2: Profile"]
-        D --> D4[Gender Select]
-        D --> D5[Weight/Height/Age]
-        D --> D6[Target Preview + Tooltip]
-        D --> D7[Motivation Text]
+        D --> D5[Gender Select]
+        D --> D6[Weight/Height/Age]
+        D --> D7[Target Preview + Tooltip]
         D --> D8[Start Journey Button]
     end
 
@@ -259,39 +305,10 @@ flowchart TD
 - Quick action button "Record Activity"
 - Recent activities list dengan detail kalori
 
-**Components Used:**
-- `ProgressRing` - SVG circular progress (calories)
-- `MonthlyStatus` - Monthly calorie goal card
-
 **Data Flow:**
-- Load user dari localStorage
-- Calculate monthly calories dari activities
-- Display recent 3 activities
-
-```mermaid
-flowchart TD
-    A[Dashboard Page] --> B[Header]
-    A --> C[ProgressRing]
-    A --> D[MonthlyStatus]
-    A --> E[Record Button]
-    A --> F[Recent Activities]
-    
-    B --> B1[Greeting Text]
-    B --> B2[Settings Icon]
-    B --> B3[Profile Icon]
-    
-    C --> C1[currentCalories / targetCalories]
-    C --> C2[Percentage Badge]
-    
-    D --> D1[Monthly Calories]
-    D --> D2[Monthly Target = yearly/12]
-    
-    F --> F1[Activity Cards with Calories]
-
-    style A fill:#0058a3,color:#fff
-    style C fill:#ffdb00
-    style D fill:#e3f2fd
-```
+- `useAuth` - get current user session
+- `useProfile` - get user profile & targets
+- `useActivities` - get activities & monthly stats
 
 ---
 
@@ -303,32 +320,18 @@ flowchart TD
 - Date picker untuk tanggal aktivitas
 - Exercise Location (text input - single field)
 - Jarak/Distance input dengan +/- buttons (0.1-50 km range)
-- Calories input dengan +/- buttons (10-1000 range)
+- Calories input dengan +/- buttons/manual input (10-1000 range)
 - Photo upload (mandatory) dengan preview
-- Save ke localStorage dengan auto-update totalCalories
+- Upload to Supabase Storage
+- Save to activities table
 
 **State Management:**
 - `date` - Selected date
 - `location` - Exercise location text
 - `distance` - Distance in km (number)
 - `calories` - Manual calories input (number)
-- `photo` - Uploaded photo (base64)
-- `status` - 'idle' | 'saving' | 'success'
-
-```mermaid
-stateDiagram-v2
-    [*] --> Idle
-    Idle --> InputtingData: User fills form
-    InputtingData --> CaloriesSet: Set calories
-    CaloriesSet --> PhotoRequired: Calories OK
-    PhotoRequired --> PhotoUploaded: Upload photo
-    PhotoUploaded --> Saving: Click Save
-    Saving --> Success: localStorage saved
-    Success --> [*]: Redirect to Dashboard
-    
-    PhotoRequired --> Error: Save without photo
-    Error --> PhotoRequired: Clear error
-```
+- `photo` - Photo preview URL
+- `isUploading` - Upload state
 
 ---
 
@@ -337,29 +340,17 @@ stateDiagram-v2
 **Purpose:** Menampilkan riwayat semua aktivitas yang tercatat
 
 **Features:**
-- Month filter dropdown (2026)
+- Month filter dropdown (all 12 months)
 - Total calories summary card
 - Activity list dengan scroll
-- Click activity untuk detail modal (calories view)
+- Click activity untuk detail modal
+- **Delete activity** dengan confirmation
 - Loading state saat switch bulan
 
 **Components Used:**
 - `MonthSummary` - Total calories summary
 - `ActivityList` - List container dengan filter
-- `ActivityDetailModal` - Slide-up modal (calories display)
-
-**Data Structure:**
-```typescript
-interface Activity {
-    id: string;
-    date: string;        // ISO date (YYYY-MM-DD)
-    location: string;    // Exercise location
-    distance: number;    // Distance in km
-    calories: number;
-    photo: string;       // base64
-    createdAt: string;   // ISO datetime
-}
-```
+- `ActivityDetailModal` - Slide-up modal + delete button
 
 ---
 
@@ -374,19 +365,6 @@ interface Activity {
 - Statistics grid (Avg/Month, Best Month)
 - Remaining calories to goal dengan CTA
 
-**Chart Types:**
-1. **Linear Progress Bar** - Yearly completion percentage
-2. **Bar Chart** - Monthly calories (dynamic from localStorage)
-
-```mermaid
-xychart-beta
-    title "Monthly Calories - 2026"
-    x-axis [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
-    y-axis "Calories" 0 --> 15000
-    bar [8000, 7500, 11000, 9000, 7000, 9500, 0, 0, 0, 0, 0, 0]
-    line [10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600, 10600]
-```
-
 ---
 
 ### 6. Profile Page (`/profile`)
@@ -394,127 +372,35 @@ xychart-beta
 **Purpose:** Informasi user, edit profil fisik, dan pengaturan
 
 **Features:**
-- Profile card dengan avatar, nama, dan badges
+- Profile card dengan avatar upload, nama, dan badges
 - Body Profile section (editable)
   - Gender, Weight, Height, Age
   - Save & Recalculate button
 - Calorie Target display dengan tooltip formula
 - Progress percentage
 - Settings toggles (Notifications, Email Digest)
-- Navigation links (Help & Support, Privacy & Data)
-- Sign Out button (clears localStorage)
-
-```mermaid
-flowchart TD
-    A[Profile Page] --> B[Header]
-    A --> C[Profile Card]
-    A --> D[Body Profile Section]
-    A --> E[Calorie Target Card]
-    A --> F[Settings Section]
-    A --> G[Sign Out Button]
-    
-    D --> D1[Gender/Weight/Height/Age]
-    D --> D2[Edit Button]
-    D --> D3[Save & Recalculate]
-    
-    E --> E1[Target Calories]
-    E --> E2[Progress %]
-    E --> E3[Formula Tooltip]
-
-    style A fill:#0058a3,color:#fff
-    style D fill:#e8f5e9
-    style E fill:#fff3e0
-```
+- Sign Out button (clears session)
 
 ---
 
 ## 🧩 Component Architecture
 
-### Component Hierarchy
+### Custom Hooks
 
-```mermaid
-flowchart TD
-    subgraph Root["🏠 Root Layout"]
-        A[RootLayout]
-        A --> B[Children Pages]
-        A --> C[BottomNav]
-    end
+| Hook | Purpose | Returns |
+|------|---------|---------|
+| `useAuth` | Authentication state | `user`, `isLoading`, `signIn`, `signOut` |
+| `useProfile` | Profile management | `profile`, `targets`, `updateProfile` |
+| `useActivities` | Activities CRUD | `activities`, `addActivity`, `deleteActivity`, `monthlyStats` |
 
-    subgraph Pages["📱 Pages"]
-        B --> D[LoginPage]
-        B --> E[Dashboard]
-        B --> F[RecordPage]
-        B --> G[HistoryPage]
-        B --> H[ReportPage]
-        B --> I[ProfilePage]
-    end
+### Services Layer
 
-    subgraph Dashboard_Components["📊 Dashboard Components"]
-        E --> J[ProgressRing - calories]
-        E --> K[MonthlyStatus - calories]
-    end
-
-    subgraph History_Components["📋 History Components"]
-        G --> L[MonthSummary - calories]
-        G --> M[ActivityList]
-        M --> N[ActivityItem - calories]
-        G --> O[ActivityDetailModal - calories]
-    end
-
-    subgraph Services["⚙️ Services"]
-        P[userData.ts]
-        P --> Q[BMR Calculation]
-        P --> R[localStorage CRUD]
-    end
-
-    style Root fill:#e3f2fd
-    style Pages fill:#fff3e0
-    style Dashboard_Components fill:#e8f5e9
-    style History_Components fill:#fce4ec
-    style Services fill:#f3e5f5
-```
-
-### Component Props Interface
-
-```mermaid
-classDiagram
-    class ProgressRing {
-        +number currentCalories
-        +number targetCalories
-        +render() JSX
-    }
-    
-    class MonthlyStatus {
-        +number currentCalories
-        +number targetCalories
-        +render() JSX
-    }
-    
-    class MonthSummary {
-        +number totalCalories
-        +number monthlyTarget
-        +string month
-        +render() JSX
-    }
-    
-    class ActivityItem {
-        +object date
-        +string title
-        +number calories
-        +string photo
-        +boolean isLast
-        +render() JSX
-    }
-    
-    class BottomNav {
-        -NavItem[] navItems
-        -string pathname
-        +render() JSX
-    }
-
-    ActivityItem --> ActivityDetailModal : opens
-    ProgressRing <|-- MonthSummary : similar pattern
-```
+| Service | Purpose | Methods |
+|---------|---------|---------|
+| `auth.service` | Authentication | `signIn`, `signOut`, `lookupEmailByNIK` |
+| `profile.service` | Profile CRUD | `getProfile`, `createProfile`, `updateProfile` |
+| `activity.service` | Activities CRUD | `getActivities`, `createActivity`, `deleteActivity` |
+| `storage.service` | File uploads | `uploadPhoto`, `deletePhoto`, `getPhotoUrl` |
 
 ---
 
@@ -535,156 +421,93 @@ classDiagram
 | **Yearly Target** | Weekly × 52 | ~13,400 cal |
 | **Monthly Target** | Yearly / 12 | ~1,116 cal |
 | **Progress %** | (totalCalories / targetCalories) × 100 | 45% |
-| **Remaining** | targetCalories - totalCalories | 70,000 cal |
 
-### Formula Explanation (Tooltip)
-```
-Target kalori dihitung berdasarkan:
-• BMR (Basal Metabolic Rate) - kalori dasar tubuh
-• × 15% = Target mingguan
-• × 52 minggu = Target tahunan
+---
+
+## 💾 Data Structure (Supabase)
+
+### User Profiles Table
+```sql
+CREATE TABLE public.user_profiles (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id),
+    nik TEXT UNIQUE,
+    name TEXT NOT NULL,
+    weight DECIMAL(5,2) NOT NULL,
+    height DECIMAL(5,2) NOT NULL,
+    age INTEGER NOT NULL,
+    gender TEXT NOT NULL,
+    target_calories DECIMAL(10,2) DEFAULT 0,
+    total_calories DECIMAL(10,2) DEFAULT 0,
+    avatar_url TEXT,
+    profile_completed BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
-### Walking Time Estimate
-```
-Calories per minute ≈ 0.05 × weight (for ~4-5 km/h pace)
-Example: 70kg person, 258 cal/week target
-Total minutes needed = 258 / (0.05 × 70) = ~74 minutes/week
+### Activities Table
+```sql
+CREATE TABLE public.activities (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id),
+    activity_date DATE NOT NULL,
+    location TEXT NOT NULL,
+    distance DECIMAL(6,2) NOT NULL,
+    calories DECIMAL(8,2) NOT NULL,
+    photo_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
 ---
 
-## 💾 Data Structure
+## 🔐 Security
 
-### User Object (localStorage: wellbeing-user)
-```typescript
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  weight: number;      // kg
-  height: number;      // cm
-  age: number;
-  gender: 'male' | 'female';
-  targetCalories: number;
-  totalCalories: number;
-  profileCompleted: boolean;
-}
+### Authentication
+- Supabase Auth with email/password
+- NIK lookup for alternative login
+- Session-based with HTTP-only cookies
+- Middleware route protection using `getSession()` (optimized)
+
+### Row Level Security (RLS)
+- Users can only view/edit their own data
+- Policies on `user_profiles` and `activities` tables
+- Storage bucket with user-folder structure
+
+---
+
+## 🚀 Deployment
+
+### Current Setup
+- **Platform:** Vercel
+- **Backend:** Supabase (hosted)
+- **Domain:** Configured via Vercel
+
+### Environment Variables
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
 ```
-
-### Activity Object (localStorage: wellbeing-activities)
-```typescript
-interface Activity {
-  id: string;
-  date: string;        // ISO date (YYYY-MM-DD)
-  location: string;    // Exercise location
-  distance: number;    // Distance in km
-  calories: number;    // 10-1000 range
-  photo: string;       // base64
-  createdAt: string;   // ISO datetime
-}
-```
-
----
-
-## 🎨 Design System
-
-### Color Palette
-
-| Variable | Hex Code | Usage |
-|----------|----------|-------|
-| `--color-primary` | #0058a3 | IKEA Blue - Primary actions, headers |
-| `--color-accent` | #ffdb00 | IKEA Yellow - Highlights, badges |
-| `--color-background-light` | #f5f5f5 | Page background |
-| `--color-card-bg` | #ffffff | Card backgrounds |
-| `--color-text-dark` | #111111 | Primary text |
-| `--color-text-muted` | #666666 | Secondary text |
-| `--color-border-light` | #e5e5e5 | Card borders |
-
-### Typography
-
-| Font | Variable | Usage |
-|------|----------|-------|
-| Spline Sans | `--font-display` | Headers, bold text |
-| Noto Sans | `--font-body` | Body text |
-| Material Symbols | - | Icons throughout app |
-
-### Spacing & Layout
-
-- **Max Width:** 512px (mobile container)
-- **Bottom Nav Height:** 64px with padding
-- **Page Padding:** 24px horizontal
-- **Card Radius:** 24px (rounded-3xl)
-- **Button Radius:** Full (rounded-full)
-
----
-
-## 🔐 Security Considerations
-
-> [!NOTE]
-> **Current State:** Aplikasi menggunakan localStorage untuk persistence data
-
-### Authentication Flow (Current - Simplified)
-- Login menyimpan user profile ke localStorage
-- Protected routes check `profileCompleted` flag
-- Session persists sampai manual sign out
-
-### Data Persistence
-- User data: `wellbeing-user` key
-- Activities: `wellbeing-activities` key
-- Data persists across browser sessions
-- Clear on sign out
-
-### Future Improvements (Recommended)
-1. Implement proper authentication (OAuth/JWT)
-2. Add protected routes middleware
-3. Use secure backend storage
-4. Implement data encryption
-5. Add CSRF protection
-
----
-
-## 🚀 Future Enhancements
-
-### Planned Features (from implementation.md)
-
-1. **Google Maps Integration**
-   - Places Autocomplete
-   - Route calculation
-   - Distance Matrix API
-
-2. **PWA Capabilities**
-   - Service Worker
-   - Offline support
-   - Add to Home Screen
-
-3. **Backend Integration**
-   - User database (Firebase/Supabase)
-   - Activity storage
-   - Leaderboard API
-
-4. **Advanced Analytics**
-   - Weekly/Monthly trends
-   - Team statistics
-   - Challenge modes
 
 ---
 
 ## 📝 Summary
 
-**ITDigital Wellbeing Monitor v2** adalah aplikasi yang fully functional dengan:
+**ITDigital Wellbeing Monitor** adalah aplikasi yang fully functional dengan:
 
+✅ **Supabase Backend** - PostgreSQL, Auth, Storage  
 ✅ **Personal Calorie Target** - BMR-based target untuk setiap coworker  
+✅ **NIK/Email Login** - Flexible authentication options  
 ✅ **Onboarding Flow** - Profile setup dengan gender/weight/height/age  
 ✅ **Manual Calories Input** - 10-1000 cal per aktivitas  
-✅ **localStorage Persistence** - Data tersimpan dengan baik  
+✅ **Delete Activity** - Hapus aktivitas dari history  
+✅ **Avatar Upload** - Upload foto profil  
+✅ **12-Month Filter** - Filter aktivitas semua bulan  
 ✅ **Formula Tooltip** - Penjelasan cara perhitungan target  
 ✅ **Editable Profile** - Update profil dan recalculate target  
-✅ **Walking Time Estimate** - Motivational message dengan estimasi waktu  
-✅ **Clean Architecture** - Separation of concerns yang baik  
-✅ **Mobile-First Design** - Responsive dan optimized untuk mobile  
-✅ **IKEA Branding** - Konsisten dengan design system IKEA  
+✅ **Vercel Deployment** - SSR dengan optimized performance  
 
 ---
 
-*Documentation updated on: January 19, 2026*
+*Documentation updated on: January 20, 2026*

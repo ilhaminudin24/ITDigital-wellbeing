@@ -1,26 +1,47 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
-import { addActivity } from "@/lib/userData";
 import Logo from "@/components/ui/Logo";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useActivities } from "@/lib/hooks/useActivities";
+import { storageService } from "@/lib/services/storage.service";
 
 export default function RecordPage() {
     const router = useRouter();
+    const { user, isLoading: authLoading } = useAuth();
+    const { addActivity } = useActivities();
+
     const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [location, setLocation] = useState<string>('');
     const [distance, setDistance] = useState<number>(1.0);
     const [calories, setCalories] = useState<number>(200);
+    const [caloriesInput, setCaloriesInput] = useState<string>('200');
     const [photo, setPhoto] = useState<string | null>(null);
-    const [status, setStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+    const [status, setStatus] = useState<'idle' | 'uploading' | 'saving' | 'success'>('idle');
     const [error, setError] = useState<string | null>(null);
     const [shake, setShake] = useState<boolean>(false);
+    const [uploadProgress, setUploadProgress] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [authLoading, user, router]);
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            // Validate file
+            const validation = storageService.validateFile(file);
+            if (!validation.valid) {
+                setError(validation.error || 'Invalid file');
+                return;
+            }
+
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPhoto(reader.result as string);
@@ -33,9 +54,15 @@ export default function RecordPage() {
     const handleCaloriesChange = (delta: number) => {
         const newValue = Math.max(10, Math.min(1000, calories + delta));
         setCalories(newValue);
+        setCaloriesInput(String(newValue));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (!user) {
+            setError('Please login to save activities');
+            return;
+        }
+
         // Validation
         if (!photo) {
             setError('Photo evidence is required');
@@ -65,27 +92,63 @@ export default function RecordPage() {
             return;
         }
 
-        setStatus('saving');
         setError(null);
 
-        // Save activity to localStorage
-        setTimeout(() => {
-            addActivity({
-                date,
+        try {
+            // Upload photo first
+            setStatus('uploading');
+            setUploadProgress('Uploading photo...');
+
+            let photoUrl: string | null = null;
+            if (photo.startsWith('data:')) {
+                const { url, error: uploadError } = await storageService.uploadBase64Photo(user.id, photo);
+                if (uploadError) {
+                    setError(uploadError);
+                    setStatus('idle');
+                    return;
+                }
+                photoUrl = url;
+            }
+
+            // Save activity
+            setStatus('saving');
+            setUploadProgress('Saving activity...');
+
+            const success = await addActivity({
+                activity_date: date,
                 location: location.trim(),
                 distance,
                 calories,
-                photo: photo || '',
+                photo_url: photoUrl,
             });
 
-            setStatus('success');
-
-            // Redirect after showing success message
-            setTimeout(() => {
-                router.push('/dashboard');
-            }, 2000);
-        }, 1000);
+            if (success) {
+                setStatus('success');
+                // Redirect after showing success message
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 2000);
+            } else {
+                setError('Failed to save activity. Please try again.');
+                setStatus('idle');
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            setError('An error occurred. Please try again.');
+            setStatus('idle');
+        }
     };
+
+    if (authLoading) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center bg-background-light gap-4">
+                <div className="animate-pulse">
+                    <Logo size="xl" />
+                </div>
+                <p className="text-sm text-slate-500 animate-pulse">Loading...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-[#f5f5f5] text-black font-display overflow-x-hidden selection:bg-accent selection:text-primary">
@@ -202,14 +265,22 @@ export default function RecordPage() {
                                 −
                             </button>
                             <div className="flex-1 max-w-[160px]">
-                                <input
-                                    type="number"
-                                    value={calories}
-                                    onChange={(e) => setCalories(Math.max(10, Math.min(1000, Number(e.target.value))))}
-                                    className="w-full text-center text-4xl font-black text-primary bg-transparent border-none focus:outline-none focus:ring-0"
-                                    min={10}
-                                    max={1000}
-                                />
+                                <div className="flex items-center justify-center">
+                                    <input
+                                        type="number"
+                                        value={caloriesInput}
+                                        onChange={(e) => setCaloriesInput(e.target.value)}
+                                        onBlur={(e) => {
+                                            const val = Number(e.target.value);
+                                            const clamped = Math.max(10, Math.min(1000, isNaN(val) ? 10 : val));
+                                            setCalories(clamped);
+                                            setCaloriesInput(String(clamped));
+                                        }}
+                                        className="w-24 text-center text-4xl font-black text-primary bg-transparent border-none focus:outline-none focus:ring-0"
+                                        min={10}
+                                        max={1000}
+                                    />
+                                </div>
                                 <p className="text-center text-sm text-gray-400 mt-1">calories</p>
                             </div>
                             <button
@@ -286,10 +357,16 @@ export default function RecordPage() {
                                 SAVE ACTIVITY
                             </>
                         )}
+                        {status === 'uploading' && (
+                            <>
+                                <div className="w-5 h-5 border-2 border-gray-400 border-t-primary rounded-full animate-spin"></div>
+                                {uploadProgress}
+                            </>
+                        )}
                         {status === 'saving' && (
                             <>
                                 <div className="w-5 h-5 border-2 border-gray-400 border-t-primary rounded-full animate-spin"></div>
-                                Saving...
+                                {uploadProgress}
                             </>
                         )}
                         {status === 'success' && (

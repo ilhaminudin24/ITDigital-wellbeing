@@ -1,11 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",  // <=== Enables static exports
-  basePath: "/ITDigital-wellbeing",      // <=== Required for GitHub Pages subdirectory
-  assetPrefix: "/ITDigital-wellbeing/",  // <=== Required for static assets on GitHub Pages
+  // Note: Removed output: "export" for SSR with Vercel
+  // Note: Removed basePath and assetPrefix (not needed for Vercel deployment)
   images: {
-    unoptimized: true, // <=== Required for static export (Next.js Image component needs a server otherwise)
+    // unoptimized: true, // Not needed for Vercel (has built-in image optimization)
     remotePatterns: [
       {
         protocol: "https",
@@ -18,7 +17,13 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "cdn.tailwindcss.com",
-      }
+      },
+      // Supabase Storage domain
+      {
+        protocol: "https",
+        hostname: "jipeqeqiugokhcxmqvgk.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
     ],
   },
 };

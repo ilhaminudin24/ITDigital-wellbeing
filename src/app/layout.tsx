@@ -19,10 +19,10 @@ export const metadata: Metadata = {
   title: "IT&Digital Wellbeing Monitor",
   description: "Aplikasi Monitoring Aktivitas Jalan Kaki untuk Tim IT & Digital IKEA Indonesia",
   icons: {
-    icon: "/ITDigital-wellbeing/icon.png",
-    apple: "/ITDigital-wellbeing/icon.png",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
-  manifest: "/ITDigital-wellbeing/manifest.json",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -33,8 +33,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/ITDigital-wellbeing/icon.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/ITDigital-wellbeing/icon.png" />
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/icon.png" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
       </head>
       <body

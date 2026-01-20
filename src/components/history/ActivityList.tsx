@@ -5,6 +5,7 @@ import ActivityItem from "./ActivityItem";
 import { clsx } from "clsx";
 
 interface Activity {
+    id?: string;
     date: { day: number; month: string };
     title: string;
     calories: number;
@@ -52,8 +53,8 @@ export default function ActivityList({ activities, month, onMonthChange, isLoadi
 
                         {/* Dropdown Menu */}
                         {isDropdownOpen && (
-                            <div className="absolute right-0 top-full mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 z-20 py-1 flex flex-col overflow-hidden">
-                                {["Jan", "Dec", "Nov"].map((m) => (
+                            <div className="absolute right-0 top-full mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 z-20 py-1 flex flex-col overflow-hidden max-h-64 overflow-y-auto">
+                                {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m) => (
                                     <button
                                         key={m}
                                         onClick={() => handleMonthSelect(m)}

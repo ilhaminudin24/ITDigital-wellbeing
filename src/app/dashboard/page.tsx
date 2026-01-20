@@ -1,47 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import ProgressRing from "@/components/dashboard/ProgressRing";
 import MonthlyStatus from "@/components/dashboard/MonthlyStatus";
 import { useRouter } from "next/navigation";
-import {
-    getUser,
-    getActivities,
-    getMonthlyCalories,
-    initializeMockData,
-    User,
-    Activity,
-} from "@/lib/userData";
 import Logo from "@/components/ui/Logo";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useProfile } from "@/lib/hooks/useProfile";
+import { useActivities } from "@/lib/hooks/useActivities";
 
 export default function Dashboard() {
     const router = useRouter();
-    const [user, setUser] = useState<User | null>(null);
-    const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
-    const [monthlyCalories, setMonthlyCalories] = useState<number>(0);
-    const [isLoading, setIsLoading] = useState(true);
+    const { user, isLoading: authLoading } = useAuth();
+    const { profile, isLoading: profileLoading, targets } = useProfile();
+    const {
+        activities,
+        isLoading: activitiesLoading,
+        monthlyStats,
+        yearlyCalories,
+        selectedMonth
+    } = useActivities();
 
+    // Redirect if not authenticated
     useEffect(() => {
-        // Initialize mock data if no user exists
-        initializeMockData();
-
-        const userData = getUser();
-        if (!userData?.profileCompleted) {
+        if (!authLoading && !user) {
             router.push('/login');
-            return;
         }
+    }, [authLoading, user, router]);
 
-        setUser(userData);
-        setRecentActivities(getActivities().slice(0, 3));
+    // Redirect if profile not completed
+    useEffect(() => {
+        if (!profileLoading && user && profile && !profile.profile_completed) {
+            router.push('/login');
+        }
+    }, [profileLoading, user, profile, router]);
 
-        // Get current month calories
-        const now = new Date();
-        setMonthlyCalories(getMonthlyCalories(now.getMonth(), now.getFullYear()));
+    // Get recent activities (last 3)
+    const recentActivities = useMemo(() => {
+        return activities.slice(0, 3);
+    }, [activities]);
 
-        setIsLoading(false);
-    }, [router]);
+    // Get current month calories
+    const currentMonthCalories = useMemo(() => {
+        return monthlyStats[selectedMonth] || 0;
+    }, [monthlyStats, selectedMonth]);
 
-    if (isLoading) {
+    const isLoading = authLoading || profileLoading || activitiesLoading;
+
+    if (isLoading || !user) {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center bg-background-light gap-4">
                 <div className="animate-pulse">
@@ -60,10 +66,10 @@ export default function Dashboard() {
                         <Logo size="md" />
                         <div className="flex flex-col">
                             <h2 className="text-primary text-xl font-bold leading-tight tracking-tight">
-                                Halo, {user?.name || 'Coworker'}!
+                                Halo, {profile?.name || 'Coworker'}!
                             </h2>
                             <p className="text-text-muted text-sm font-medium">
-                                Let's hit that {((user?.targetCalories || 0) / 1000).toFixed(0)}K cal goal.
+                                Let's hit that {((profile?.target_calories || targets?.yearlyTarget || 0) / 1000).toFixed(0)}K cal goal.
                             </p>
                         </div>
                     </div>
@@ -86,14 +92,14 @@ export default function Dashboard() {
                 <main className="flex flex-col px-6 gap-6 w-full">
                     {/* Yearly Progress */}
                     <ProgressRing
-                        currentCalories={user?.totalCalories || 0}
-                        targetCalories={user?.targetCalories || 127500}
+                        currentCalories={yearlyCalories || profile?.total_calories || 0}
+                        targetCalories={profile?.target_calories || targets?.yearlyTarget || 127500}
                     />
 
                     {/* Current Goal */}
                     <MonthlyStatus
-                        currentCalories={monthlyCalories}
-                        targetCalories={user?.targetCalories || 127500}
+                        currentCalories={currentMonthCalories}
+                        targetCalories={profile?.target_calories || targets?.yearlyTarget || 127500}
                     />
 
                     {/* Quick Action */}
@@ -138,7 +144,7 @@ export default function Dashboard() {
                                                 {activity.location}
                                             </p>
                                             <p className="text-text-muted text-xs">
-                                                {activity.distance} km • {new Date(activity.date).toLocaleDateString('en-US', {
+                                                {activity.distance} km • {new Date(activity.activity_date).toLocaleDateString('en-US', {
                                                     month: 'short',
                                                     day: 'numeric',
                                                     year: 'numeric'

@@ -3,7 +3,7 @@
 import Image from "next/image";
 
 interface LogoProps {
-    size?: "sm" | "md" | "lg" | "xl";
+    size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
     withText?: boolean;
     className?: string;
 }
@@ -13,6 +13,8 @@ const sizeMap = {
     md: 32,
     lg: 48,
     xl: 64,
+    "2xl": 96,
+    "3xl": 170
 };
 
 export default function Logo({ size = "md", withText = false, className = "" }: LogoProps) {
@@ -21,7 +23,7 @@ export default function Logo({ size = "md", withText = false, className = "" }: 
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             <Image
-                src="/ITDigital-wellbeing/logo.png"
+                src="/logo.png"
                 alt="IT&Digital Wellbeing Monitor Logo"
                 width={pixelSize}
                 height={pixelSize}

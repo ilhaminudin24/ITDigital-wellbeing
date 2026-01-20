@@ -2,29 +2,42 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 import Logo from "@/components/ui/Logo";
+import { createClient } from "@/lib/supabase/client";
+import type { UserProfile } from "@/lib/supabase/types";
 import {
-    getUser,
-    createUser,
     calculateBMR,
     calculateYearlyTarget,
-    calculateWeeklyTarget,
     TARGET_FORMULA_TOOLTIP,
     getMotivationText,
 } from "@/lib/userData";
 
-export default function LoginPage() {
-    const router = useRouter();
+// Helper function to detect NIK vs Email
+function isNIK(identifier: string): boolean {
+    return /^\d+$/.test(identifier.trim());
+}
 
-    // Multi-step form state
-    const [step, setStep] = useState<'login' | 'profile'>('login');
+function LoginContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const supabase = createClient();
+
+    // Multi-step form state: login -> reset-password (if first login) -> profile (if not completed)
+    const [step, setStep] = useState<'login' | 'reset-password' | 'profile'>('login');
 
     // Login form state
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState(''); // Can be NIK or Email
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    // Password reset form state (for first-time login)
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
     // Profile form state
     const [name, setName] = useState('');
@@ -32,51 +45,303 @@ export default function LoginPage() {
     const [weight, setWeight] = useState<number>(70);
     const [height, setHeight] = useState<number>(170);
     const [age, setAge] = useState<number>(30);
+    const [profileNIK, setProfileNIK] = useState('');
     const [targetPreview, setTargetPreview] = useState<number>(0);
     const [showTooltip, setShowTooltip] = useState(false);
 
-    // Check if user already has a completed profile
+    // Check for error in URL params
     useEffect(() => {
-        const user = getUser();
-        if (user?.profileCompleted) {
-            router.push('/dashboard');
+        const errorParam = searchParams.get('error');
+        if (errorParam === 'auth_callback_error') {
+            setError('Terjadi kesalahan saat autentikasi. Silakan coba lagi.');
         }
-    }, [router]);
+    }, [searchParams]);
 
-    const handleLogin = () => {
-        // For now, we just proceed to profile step or dashboard
-        const user = getUser();
-        if (user?.profileCompleted) {
-            router.push('/dashboard');
-        } else {
-            // Extract name from email for convenience
-            const extractedName = email.split('@')[0];
-            setName(extractedName.charAt(0).toUpperCase() + extractedName.slice(1));
-            setStep('profile');
+    // Check if user is already authenticated
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                // First check local session (fast, no network call)
+                const { data: { session } } = await supabase.auth.getSession();
+
+                // If no session, user is not logged in - stay on login page
+                if (!session?.user) {
+                    return;
+                }
+
+                // Only make network call if we have a session
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('user_id', session.user.id)
+                    .single();
+
+                if (profile?.profile_completed && profile?.password_changed) {
+                    router.push('/dashboard');
+                } else if (profile) {
+                    // Pre-fill from existing profile
+                    setProfileNIK(profile.nik || '');
+                    setName(profile.name || '');
+                    if (profile.weight) setWeight(profile.weight);
+                    if (profile.height) setHeight(profile.height);
+                    if (profile.age) setAge(profile.age);
+                    if (profile.gender) setGender(profile.gender as 'male' | 'female');
+
+                    // Check what step to show
+                    if (!profile.password_changed) {
+                        setStep('reset-password');
+                    } else {
+                        setStep('profile');
+                    }
+                } else if (session.user.email) {
+                    // Fallback: extract name from email
+                    const extractedName = session.user.email.split('@')[0];
+                    setName(extractedName.charAt(0).toUpperCase() + extractedName.slice(1));
+                    setStep('profile');
+                }
+            } catch (error) {
+                // Silently handle errors - user can still login manually
+                console.warn('Session check failed:', error);
+            }
+        };
+        checkSession();
+    }, [router, supabase]);
+
+    // Handle Login with NIK or Email
+    const handleLogin = async () => {
+        if (!identifier || !password) {
+            setError('Mohon isi semua field');
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            let email = identifier;
+
+            // If identifier is NIK, lookup the email from user_profiles
+            if (isNIK(identifier)) {
+                const { data: profile, error: lookupError } = await supabase
+                    .from('user_profiles')
+                    .select('email')
+                    .eq('nik', identifier.trim())
+                    .single();
+
+                if (lookupError || !profile || !profile.email) {
+                    setError('NIK tidak ditemukan. Pastikan NIK sudah terdaftar atau gunakan email.');
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Use the email from profile for login
+                email = profile.email;
+            }
+
+            // Sign in with email and password
+            const { data, error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (signInError) {
+                if (signInError.message.includes('Invalid login credentials')) {
+                    setError('Email atau password salah');
+                } else if (signInError.message.includes('Email not confirmed')) {
+                    setError('Email belum dikonfirmasi. Cek inbox Anda.');
+                } else {
+                    setError(signInError.message);
+                }
+                setIsLoading(false);
+                return;
+            }
+
+            if (data.user) {
+                // Check if profile exists and check password_changed status
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('user_id', data.user.id)
+                    .single();
+
+                if (profile) {
+                    // Pre-fill profile data
+                    setProfileNIK(profile.nik || '');
+                    setName(profile.name || '');
+                    if (profile.weight) setWeight(profile.weight);
+                    if (profile.height) setHeight(profile.height);
+                    if (profile.age) setAge(profile.age);
+                    if (profile.gender) setGender(profile.gender as 'male' | 'female');
+
+                    // Check if password needs to be changed (first-time login)
+                    if (!profile.password_changed) {
+                        setStep('reset-password');
+                        return;
+                    }
+
+                    // Check if profile is complete
+                    if (profile.profile_completed) {
+                        // Redirect to dashboard
+                        const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+                        router.push(redirectTo);
+                    } else {
+                        // Show profile setup
+                        setStep('profile');
+                    }
+                } else {
+                    // No profile exists - extract name from email and show profile setup
+                    const extractedName = email.split('@')[0];
+                    setName(extractedName.charAt(0).toUpperCase() + extractedName.slice(1));
+                    setStep('profile');
+                }
+            }
+        } catch (err) {
+            setError('Terjadi kesalahan jaringan. Silakan coba lagi.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
+    // Handle Password Reset (for first-time login)
+    const handlePasswordReset = async () => {
+        if (!newPassword || !confirmNewPassword) {
+            setError('Mohon isi semua field');
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            setError('Password tidak cocok');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            setError('Password minimal 6 karakter');
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user) {
+                setError('Sesi tidak valid. Silakan login ulang.');
+                setStep('login');
+                setIsLoading(false);
+                return;
+            }
+
+            // Update password in Supabase Auth
+            const { error: updateError } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            if (updateError) {
+                setError('Gagal mengubah password: ' + updateError.message);
+                setIsLoading(false);
+                return;
+            }
+
+            // Mark password as changed in user_profiles
+            const { error: profileError } = await supabase
+                .from('user_profiles')
+                .update({ password_changed: true })
+                .eq('user_id', user.id);
+
+            if (profileError) {
+                console.error('Profile update error:', profileError);
+                // Continue anyway - password is already changed
+            }
+
+            // Check if profile is complete
+            const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+
+            setSuccessMessage('Password berhasil diubah!');
+
+            if (profile?.profile_completed) {
+                // Redirect to dashboard
+                setTimeout(() => {
+                    router.push('/dashboard');
+                }, 1000);
+            } else {
+                // Show profile setup
+                setTimeout(() => {
+                    setSuccessMessage(null);
+                    setStep('profile');
+                }, 1000);
+            }
+        } catch (err) {
+            setError('Terjadi kesalahan jaringan. Silakan coba lagi.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Handle Calculate BMR
     const handleCalculate = () => {
         const bmr = calculateBMR(weight, height, age, gender);
         setTargetPreview(calculateYearlyTarget(bmr));
     };
 
-    const handleStartJourney = () => {
+    // Handle Start Journey (Create Profile)
+    const handleStartJourney = async () => {
         if (targetPreview === 0) {
             handleCalculate();
         }
 
-        // Create user with profile data
-        createUser({
-            name: name || 'Coworker',
-            email: email || 'coworker@ikea.com',
-            weight,
-            height,
-            age,
-            gender,
-        });
+        setIsLoading(true);
+        setError(null);
 
-        router.push('/dashboard');
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user) {
+                setError('Sesi tidak valid. Silakan login ulang.');
+                setStep('login');
+                setIsLoading(false);
+                return;
+            }
+
+            const bmr = calculateBMR(weight, height, age, gender);
+            const yearlyTarget = calculateYearlyTarget(bmr);
+
+            // Create or update profile in Supabase
+            const { error: profileError } = await supabase
+                .from('user_profiles')
+                .upsert({
+                    user_id: user.id,
+                    nik: profileNIK || null,
+                    name: name || 'Coworker',
+                    weight,
+                    height,
+                    age,
+                    gender,
+                    target_calories: yearlyTarget,
+                    total_calories: 0,
+                    profile_completed: true,
+                }, {
+                    onConflict: 'user_id',
+                });
+
+            if (profileError) {
+                console.error('Profile error:', profileError);
+                setError('Gagal menyimpan profil. Silakan coba lagi.');
+                setIsLoading(false);
+                return;
+            }
+
+            // Redirect to dashboard
+            router.push('/dashboard');
+        } catch (err) {
+            setError('Terjadi kesalahan. Silakan coba lagi.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // Auto-calculate when profile fields change
@@ -86,6 +351,135 @@ export default function LoginPage() {
         }
     }, [weight, height, age, gender, step]);
 
+    // Render Password Reset Step (for first-time login)
+    if (step === 'reset-password') {
+        return (
+            <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background-light text-slate-900 font-display">
+                {/* Header */}
+                <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4 lg:px-10">
+                    <Logo size="md" withText />
+                </header>
+
+                {/* Main Content */}
+                <main className="flex flex-1 flex-col items-center justify-center p-4 lg:p-8">
+                    <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 border border-gray-200">
+                        <div className="mb-6 text-center">
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-700">
+                                <span className="material-symbols-outlined text-[16px]">lock_reset</span>
+                                First Time Login
+                            </div>
+                            <h2 className="text-2xl font-bold text-primary mb-2">
+                                Set Your Password
+                            </h2>
+                            <p className="text-slate-500 text-sm">
+                                Untuk keamanan akun, silakan buat password baru Anda.
+                            </p>
+                        </div>
+
+                        {/* Error/Success Messages */}
+                        {error && (
+                            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[18px]">error</span>
+                                {error}
+                            </div>
+                        )}
+                        {successMessage && (
+                            <div className="mb-4 p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                {successMessage}
+                            </div>
+                        )}
+
+                        <form className="flex flex-col gap-5" onSubmit={(e) => { e.preventDefault(); handlePasswordReset(); }}>
+                            {/* New Password Input */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Password Baru <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        className="w-full rounded-full border border-gray-300 bg-gray-50 px-5 py-3 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        type={showPassword ? "text" : "password"}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="Minimal 6 karakter"
+                                        minLength={6}
+                                        required
+                                    />
+                                    <span
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-slate-600"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">
+                                            {showPassword ? "visibility_off" : "visibility"}
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Confirm Password Input */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Konfirmasi Password <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    className="w-full rounded-full border border-gray-300 bg-gray-50 px-5 py-3 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                    type="password"
+                                    value={confirmNewPassword}
+                                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                    placeholder="Ulangi password baru"
+                                    required
+                                />
+                            </div>
+
+                            {/* Password Requirements */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <p className="text-xs font-semibold text-blue-800 mb-2">Password harus memenuhi:</p>
+                                <ul className="text-xs text-blue-700 space-y-1">
+                                    <li className="flex items-center gap-2">
+                                        <span className={`material-symbols-outlined text-[14px] ${newPassword.length >= 6 ? 'text-green-600' : 'text-blue-400'}`}>
+                                            {newPassword.length >= 6 ? 'check_circle' : 'radio_button_unchecked'}
+                                        </span>
+                                        Minimal 6 karakter
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <span className={`material-symbols-outlined text-[14px] ${newPassword === confirmNewPassword && confirmNewPassword.length > 0 ? 'text-green-600' : 'text-blue-400'}`}>
+                                            {newPassword === confirmNewPassword && confirmNewPassword.length > 0 ? 'check_circle' : 'radio_button_unchecked'}
+                                        </span>
+                                        Password cocok
+                                    </li>
+                                </ul>
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={isLoading || newPassword.length < 6 || newPassword !== confirmNewPassword}
+                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-base font-bold tracking-wide text-white transition-transform hover:scale-[1.02] hover:bg-[#004f93] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
+                                        MENYIMPAN...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-[20px]">lock</span>
+                                        SET PASSWORD
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+
+                    <footer className="mt-8 text-center text-xs text-slate-400">
+                        © IKEA IT & Digital Indonesia 2026. All rights reserved.
+                    </footer>
+                </main>
+            </div>
+        );
+    }
+
     // Render Profile Step
     if (step === 'profile') {
         return (
@@ -93,13 +487,6 @@ export default function LoginPage() {
                 {/* Header */}
                 <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4 lg:px-10">
                     <Logo size="md" withText />
-                    <button
-                        onClick={() => setStep('login')}
-                        className="flex items-center gap-1 text-sm text-slate-500 hover:text-primary"
-                    >
-                        <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                        Back
-                    </button>
                 </header>
 
                 {/* Main Content */}
@@ -118,6 +505,14 @@ export default function LoginPage() {
                             </p>
                         </div>
 
+                        {/* Error Message */}
+                        {error && (
+                            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[18px]">error</span>
+                                {error}
+                            </div>
+                        )}
+
                         <div className="flex flex-col gap-5">
                             {/* Name Input */}
                             <div className="flex flex-col gap-2">
@@ -132,6 +527,32 @@ export default function LoginPage() {
                                     placeholder="Enter your name"
                                 />
                             </div>
+
+                            {/* NIK Display (Read-only if already set from registration) */}
+                            {profileNIK ? (
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        NIK (Coworker ID) <span className="text-green-600 font-normal">✓ Tersimpan</span>
+                                    </label>
+                                    <div className="w-full rounded-full border border-green-300 bg-green-50 px-5 py-3 text-base text-slate-900 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-green-600 text-[18px]">badge</span>
+                                        {profileNIK}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        NIK (Coworker ID) <span className="text-slate-400 font-normal">- opsional</span>
+                                    </label>
+                                    <input
+                                        className="w-full rounded-full border border-gray-300 bg-gray-50 px-5 py-3 text-base text-slate-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        type="text"
+                                        value={profileNIK}
+                                        onChange={(e) => setProfileNIK(e.target.value)}
+                                        placeholder="12345678"
+                                    />
+                                </div>
+                            )}
 
                             {/* Gender Selection */}
                             <div className="flex flex-col gap-2">
@@ -270,10 +691,20 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={handleStartJourney}
-                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-base font-bold tracking-wide text-white transition-transform hover:scale-[1.02] hover:bg-[#004f93] active:scale-[0.98]"
+                                disabled={isLoading}
+                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-base font-bold tracking-wide text-white transition-transform hover:scale-[1.02] hover:bg-[#004f93] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <span className="material-symbols-outlined text-[20px] text-accent">directions_walk</span>
-                                START MY JOURNEY
+                                {isLoading ? (
+                                    <>
+                                        <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
+                                        SAVING...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-[20px] text-accent">directions_walk</span>
+                                        START MY JOURNEY
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -286,7 +717,7 @@ export default function LoginPage() {
         );
     }
 
-    // Render Login Step (Original)
+    // Render Login Step (Default)
     return (
         <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background-light text-slate-900 font-display">
             {/* Header */}
@@ -323,48 +754,17 @@ export default function LoginPage() {
                         <div className="relative z-10">
                             {/* Logo in Hero */}
                             <div className="mb-6">
-                                <Logo size="xl" />
+                                <Logo size="3xl" />
                             </div>
-                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
-                                <span className="material-symbols-outlined text-[16px]">
-                                    directions_walk
-                                </span>
-                                Challenge 2026
-                            </div>
+
                             <h1 className="mb-4 text-4xl font-black leading-tight tracking-tight text-slate-900 lg:text-5xl">
-                                Track your <br />
-                                <span className="text-primary">calorie journey</span>
+                                IT & Digital <br />
+                                <span className="text-primary">Wellbeing MOnitor</span>
                             </h1>
-                            <p className="text-lg text-slate-600">
-                                Join the challenge and monitor your walking activity with IKEA IT
-                                & Digital. Every step counts towards a healthier you.
-                            </p>
+
                         </div>
 
-                        <div className="relative z-10 mt-12 hidden lg:block">
-                            <div className="flex items-center gap-4">
-                                <div className="flex -space-x-4 rtl:space-x-reverse">
-                                    {[
-                                        "https://lh3.googleusercontent.com/aida-public/AB6AXuBMhaGUAz-tWFksLVG0HiHBaGEjPF4XGrkJM8zfH6q7RASCu0tpR80mcdotElHExfAlxBZuYvdkaYAnL4cDQSVCp9BSUss4pfh4Pd7ZIh5Nrppk2SDQIic5YWczRGClxJBCxDiL_s6teJ65Dapm5x5DWIsOUTCqyjVLcoezX-9WEgidN2_Q92s79VwVzFQeTEyHdKGnWDLlyrze91hhup2s_vK74THtGmPjsJZ8PSFv3BYnJMwSldqK7EJj76n3RE_MLFBATtUpAz1u",
-                                        "https://lh3.googleusercontent.com/aida-public/AB6AXuBBMl5kGLwYqkSoXJ-JAB7lEDXuQlLwcvwrERzOun6uKByO_t6dE85W2MzEA7UdcChG5xUl02tQ6zCc3QWgwXVj8OI1c2YV_Ke6oZtubu7VVrs7J6qswkUWd7ugE4w5Xp4spGY8hZNPCIW9DVVwc_-u77IbnnBgircaCGScfaQaQYcSbQsF9hFxBfl7uv4bTrlKWdJ2kedZvQIG4nYL3z6N2GKmnciw1T8zKPuH8r_mEQabDYqSYFysq1tzWK88u_kYeDEdiw83UvzI",
-                                        "https://lh3.googleusercontent.com/aida-public/AB6AXuDixxe64NMM7awr2ISzfHL16DrofjYjSQINiqb4TN3As_JRly6DLwFvcYg2mmhSHgRt6CGGdmKAqlekB1xvZn3ypvE3wH4-w1oPqR4sw3yzvXMzJpQpaVUzS3YhAcxvSHp9cc3EOCUXvypS5XI92mJRhl5hZ6o4zh3pM6mZYhGkygl9Ncin60P7Fw0ezmy7o62G0ALiBH6fsJIz59rHPzzMBqgTKr_-D0BD0KyCRKysQtESd2eaHVq6KKeo791ZO7wIp44XbYk8xEAW",
-                                    ].map((src, i) => (
-                                        <div
-                                            key={i}
-                                            className="relative h-10 w-10 rounded-full border-2 border-white bg-gray-300 overflow-hidden"
-                                        >
-                                            <Image src={src} alt="User" fill className="object-cover" />
-                                        </div>
-                                    ))}
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-accent text-xs font-bold text-primary">
-                                        +120
-                                    </div>
-                                </div>
-                                <div className="text-sm font-medium text-slate-600">
-                                    Coworkers already joined
-                                </div>
-                            </div>
-                        </div>
+
                     </div>
 
                     {/* Right Panel (Form) */}
@@ -377,6 +777,20 @@ export default function LoginPage() {
                                 Please enter your details to sign in.
                             </p>
                         </div>
+
+                        {/* Error/Success Messages */}
+                        {error && (
+                            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[18px]">error</span>
+                                {error}
+                            </div>
+                        )}
+                        {successMessage && (
+                            <div className="mb-4 p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                {successMessage}
+                            </div>
+                        )}
 
                         <form className="flex flex-col gap-6" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
                             <div className="flex flex-col gap-2">
@@ -393,8 +807,8 @@ export default function LoginPage() {
                                         autoComplete="username"
                                         type="text"
                                         placeholder="Enter your ID or Email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        value={identifier}
+                                        onChange={(e) => setIdentifier(e.target.value)}
                                     />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 peer-focus:text-primary">
                                         <span className="material-symbols-outlined text-[20px]">
@@ -442,16 +856,29 @@ export default function LoginPage() {
                             </div>
 
                             <button
-                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-base font-bold tracking-wide text-white transition-transform hover:scale-[1.02] hover:bg-[#004f93] active:scale-[0.98]"
+                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-base font-bold tracking-wide text-white transition-transform hover:scale-[1.02] hover:bg-[#004f93] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                                 type="submit"
+                                disabled={isLoading}
                             >
-                                LOGIN
-                                <span className="material-symbols-outlined text-[20px]">
-                                    arrow_forward
-                                </span>
+                                {isLoading ? (
+                                    <>
+                                        <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
+                                        LOGGING IN...
+                                    </>
+                                ) : (
+                                    <>
+                                        LOGIN
+                                        <span className="material-symbols-outlined text-[20px]">
+                                            arrow_forward
+                                        </span>
+                                    </>
+                                )}
                             </button>
 
                             <div className="mt-4 flex flex-col items-center gap-4 text-center">
+                                <p className="text-xs text-slate-500">
+                                    Belum punya akun? Hubungi admin IT untuk mendapatkan akses.
+                                </p>
                                 <p className="text-xs text-slate-400">
                                     By logging in, you agree to the{" "}
                                     <Link className="underline hover:text-primary" href="#">
@@ -473,5 +900,17 @@ export default function LoginPage() {
                 </footer>
             </main>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex min-h-screen items-center justify-center">
+                <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }

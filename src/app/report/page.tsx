@@ -1,54 +1,77 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import Logo from "@/components/ui/Logo";
-import {
-    getUser,
-    getYearlyCaloriesByMonth,
-    initializeMockData,
-    User,
-} from "@/lib/userData";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useProfile } from "@/lib/hooks/useProfile";
+import { useActivities } from "@/lib/hooks/useActivities";
 
 export default function ReportPage() {
     const router = useRouter();
-    const [year, setYear] = useState(2026);
-    const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
-    const [user, setUser] = useState<User | null>(null);
-    const [monthlyData, setMonthlyData] = useState<number[]>(Array(12).fill(0));
+    const { user, isLoading: authLoading } = useAuth();
+    const { profile, targets, isLoading: profileLoading } = useProfile();
+    const {
+        monthlyStats,
+        yearlyCalories,
+        isLoading: activitiesLoading,
+        selectedYear,
+        setSelectedYear
+    } = useActivities();
 
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
+
+    // Redirect if not authenticated
     useEffect(() => {
-        initializeMockData();
-        const userData = getUser();
-        setUser(userData);
-        setMonthlyData(getYearlyCaloriesByMonth(year));
-    }, [year]);
+        if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [authLoading, user, router]);
+
+    // Sync year with hook
+    useEffect(() => {
+        setSelectedYear(year);
+    }, [year, setSelectedYear]);
 
     // Calculate stats
-    const totalCalories = user?.totalCalories || 0;
-    const targetCalories = user?.targetCalories || 127500;
+    const totalCalories = yearlyCalories || profile?.total_calories || 0;
+    const targetCalories = profile?.target_calories || targets?.yearlyTarget || 127500;
     const percent = Math.min(Math.round((totalCalories / targetCalories) * 100), 100);
-    const monthlyTarget = Math.round(targetCalories / 12);
 
     // Find best month
-    const maxCalories = Math.max(...monthlyData);
-    const bestMonthIndex = monthlyData.indexOf(maxCalories);
+    const maxCalories = Math.max(...monthlyStats);
+    const bestMonthIndex = monthlyStats.indexOf(maxCalories);
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const bestMonth = maxCalories > 0 ? monthNames[bestMonthIndex] : "-";
 
     // Calculate average (only months with data)
-    const monthsWithData = monthlyData.filter(m => m > 0).length;
+    const monthsWithData = monthlyStats.filter(m => m > 0).length;
     const avgMonthly = monthsWithData > 0 ? Math.round(totalCalories / monthsWithData) : 0;
 
     const remaining = Math.max(0, targetCalories - totalCalories);
 
     // Chart heights (normalized to max height)
-    const maxHeight = Math.max(...monthlyData, monthlyTarget);
+    const monthlyTarget = Math.round(targetCalories / 12);
+    const maxHeight = Math.max(...monthlyStats, monthlyTarget);
     const getBarHeight = (value: number) => {
         if (maxHeight === 0) return "5%";
         return `${Math.max(5, (value / maxHeight) * 100)}%`;
     };
+
+    const isLoading = authLoading || profileLoading || activitiesLoading;
+
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center bg-background-light gap-4">
+                <div className="animate-pulse">
+                    <Logo size="xl" />
+                </div>
+                <p className="text-sm text-slate-500 animate-pulse">Loading...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">
@@ -64,13 +87,12 @@ export default function ReportPage() {
                             <p className="text-text-muted text-sm font-medium">Track your achievements</p>
                         </div>
                     </div>
-                    <div
-                        className="h-10 w-10 rounded-full bg-surface bg-cover bg-center border border-border-light cursor-pointer shadow-sm"
-                        style={{
-                            backgroundImage:
-                                'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCggN_k7P4__GcZiX42vSpXAA5K8yR8Ef6z7QfJ7VXB5Z72mmA9CShvrhKuXaMA3yky4N1kehsZnIHJPM2-AvxGCYEXR9XdDDAEOKZvUGUCojcwFG1IkyhFUpQoy6ESqlpvLySh0RBPe9jo-vytFxefw5yzNr1A2ZiaWzWL809jLTpFqp3mCOIfp9mdF6dFxP66BYRdwJF4CD6NrpKfiD_jD5OkPP886nR636ySoJaYksj5VoBTbk5Fi1zQbxpKQ4xQk4ZMaAjS7kpQ")',
-                        }}
-                    ></div>
+                    <button
+                        onClick={() => router.push('/profile')}
+                        className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"
+                    >
+                        <span className="material-symbols-outlined">person</span>
+                    </button>
                 </header>
 
                 <main className="flex flex-col px-6 gap-6 w-full">
@@ -141,44 +163,50 @@ export default function ReportPage() {
                             </div>
                         </div>
 
-                        <div className="grid min-h-[160px] grid-cols-6 items-end gap-2 sm:gap-3">
+                        <div className="grid grid-cols-6 gap-2 sm:gap-3" style={{ height: '140px' }}>
                             {monthNames.slice(0, 6).map((label, idx) => (
-                                <div key={idx} className="group flex flex-col items-center gap-2">
-                                    <div
-                                        className={clsx(
-                                            "w-full rounded-t-lg transition-all duration-700 ease-out",
-                                            monthlyData[idx] === maxCalories && maxCalories > 0
-                                                ? "bg-accent shadow-sm"
-                                                : "bg-primary/20 group-hover:bg-primary"
-                                        )}
-                                        style={{ height: getBarHeight(monthlyData[idx]) }}
-                                    ></div>
+                                <div key={idx} className="group flex flex-col items-center h-full">
+                                    <div className="flex-1 w-full flex items-end">
+                                        <div
+                                            className={clsx(
+                                                "w-full rounded-t-lg transition-all duration-700 ease-out",
+                                                monthlyStats[idx] === maxCalories && maxCalories > 0
+                                                    ? "bg-accent shadow-sm"
+                                                    : monthlyStats[idx] > 0
+                                                        ? "bg-primary/40 group-hover:bg-primary"
+                                                        : "bg-gray-200"
+                                            )}
+                                            style={{ height: getBarHeight(monthlyStats[idx]) }}
+                                        ></div>
+                                    </div>
                                     <span className={clsx(
-                                        "text-xs font-bold",
-                                        monthlyData[idx] === maxCalories && maxCalories > 0 ? "text-primary" : "text-gray-400"
+                                        "text-xs font-bold mt-2",
+                                        monthlyStats[idx] === maxCalories && maxCalories > 0 ? "text-primary" : "text-gray-400"
                                     )}>{label}</span>
                                 </div>
                             ))}
                         </div>
 
                         {/* Second row for Jul-Dec */}
-                        <div className="grid min-h-[160px] grid-cols-6 items-end gap-2 sm:gap-3 mt-4">
+                        <div className="grid grid-cols-6 gap-2 sm:gap-3 mt-4" style={{ height: '140px' }}>
                             {monthNames.slice(6, 12).map((label, idx) => (
-                                <div key={idx + 6} className="group flex flex-col items-center gap-2">
-                                    <div
-                                        className={clsx(
-                                            "w-full rounded-t-lg transition-all duration-700 ease-out",
-                                            monthlyData[idx + 6] === maxCalories && maxCalories > 0
-                                                ? "bg-accent shadow-sm"
-                                                : monthlyData[idx + 6] > 0
-                                                    ? "bg-primary/20 group-hover:bg-primary"
-                                                    : "bg-gray-100"
-                                        )}
-                                        style={{ height: getBarHeight(monthlyData[idx + 6]) }}
-                                    ></div>
+                                <div key={idx + 6} className="group flex flex-col items-center h-full">
+                                    <div className="flex-1 w-full flex items-end">
+                                        <div
+                                            className={clsx(
+                                                "w-full rounded-t-lg transition-all duration-700 ease-out",
+                                                monthlyStats[idx + 6] === maxCalories && maxCalories > 0
+                                                    ? "bg-accent shadow-sm"
+                                                    : monthlyStats[idx + 6] > 0
+                                                        ? "bg-primary/40 group-hover:bg-primary"
+                                                        : "bg-gray-200"
+                                            )}
+                                            style={{ height: getBarHeight(monthlyStats[idx + 6]) }}
+                                        ></div>
+                                    </div>
                                     <span className={clsx(
-                                        "text-xs font-bold",
-                                        monthlyData[idx + 6] === maxCalories && maxCalories > 0 ? "text-primary" : "text-gray-400"
+                                        "text-xs font-bold mt-2",
+                                        monthlyStats[idx + 6] === maxCalories && maxCalories > 0 ? "text-primary" : "text-gray-400"
                                     )}>{label}</span>
                                 </div>
                             ))}

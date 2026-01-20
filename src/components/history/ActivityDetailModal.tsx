@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 
 interface Activity {
+    id?: string;
     date: { day: number; month: string };
     title: string;
     calories: number;
@@ -15,15 +16,28 @@ interface Activity {
 interface ActivityDetailModalProps {
     activity: Activity | null;
     onClose: () => void;
+    onDelete?: (id: string) => Promise<void>;
+    isDeleting?: boolean;
 }
 
-export default function ActivityDetailModal({ activity, onClose }: ActivityDetailModalProps) {
+export default function ActivityDetailModal({ activity, onClose, onDelete, isDeleting = false }: ActivityDetailModalProps) {
     const [isVisible, setIsVisible] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState(0);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const startY = useRef<number | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+    // Handle delete with confirmation
+    const handleDelete = async () => {
+        if (!activity?.id || !onDelete) return;
+
+        const confirmed = window.confirm('Apakah Anda yakin ingin menghapus aktivitas ini?');
+        if (!confirmed) return;
+
+        await onDelete(activity.id);
+    };
 
     // Focus Management & Scroll Lock
     useEffect(() => {
@@ -203,6 +217,27 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
                                 </div>
                             </div>
                         </div>
+
+                        {/* Delete Button */}
+                        {onDelete && activity?.id && (
+                            <button
+                                onClick={handleDelete}
+                                disabled={isDeleting}
+                                className="w-full mt-4 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-bold py-4 rounded-2xl shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        <span>Menghapus...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined">delete</span>
+                                        <span>Hapus Aktivitas</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                     <div className="h-10"></div>
                 </div>

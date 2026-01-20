@@ -2,28 +2,30 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Logo from "@/components/ui/Logo";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useProfile } from "@/lib/hooks/useProfile";
+import { useActivities } from "@/lib/hooks/useActivities";
+import { profileService } from "@/lib/services/profile.service";
 import {
-    getUser,
-    updateUserProfile,
-    clearUser,
-    clearActivities,
-    calculateBMR,
-    calculateYearlyTarget,
     TARGET_FORMULA_TOOLTIP,
     getMotivationText,
-    User,
-    initializeMockData,
 } from "@/lib/userData";
 
 export default function Profile() {
     const router = useRouter();
-    const [user, setUser] = useState<User | null>(null);
+    const { user, isLoading: authLoading, signOut } = useAuth();
+    const { profile, isLoading: profileLoading, updateProfile, uploadAvatar, targets } = useProfile();
+    const { yearlyCalories } = useActivities();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [emailDigestEnabled, setEmailDigestEnabled] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [showTooltip, setShowTooltip] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
     // Edit form state
     const [editWeight, setEditWeight] = useState(70);
@@ -31,52 +33,96 @@ export default function Profile() {
     const [editAge, setEditAge] = useState(30);
     const [editGender, setEditGender] = useState<'male' | 'female'>('male');
 
+    // Redirect if not authenticated
     useEffect(() => {
-        initializeMockData();
-        const userData = getUser();
-        if (userData) {
-            setUser(userData);
-            setEditWeight(userData.weight);
-            setEditHeight(userData.height);
-            setEditAge(userData.age);
-            setEditGender(userData.gender);
+        if (!authLoading && !user) {
+            router.push('/login');
         }
-    }, []);
+    }, [authLoading, user, router]);
 
-    const handleSignOut = () => {
-        clearUser();
-        clearActivities();
+    // Initialize edit form with profile data
+    useEffect(() => {
+        if (profile) {
+            setEditWeight(profile.weight);
+            setEditHeight(profile.height);
+            setEditAge(profile.age);
+            setEditGender(profile.gender as 'male' | 'female');
+        }
+    }, [profile]);
+
+    const handleSignOut = async () => {
+        await signOut();
         router.push('/');
     };
 
-    const handleSaveProfile = () => {
-        const updated = updateUserProfile({
+    const handleSaveProfile = async () => {
+        setIsSaving(true);
+
+        // Calculate new target based on updated profile
+        const newTargets = profileService.calculateAllTargets(
+            editWeight,
+            editHeight,
+            editAge,
+            editGender
+        );
+
+        const success = await updateProfile({
             weight: editWeight,
             height: editHeight,
             age: editAge,
             gender: editGender,
-        }, true);
+            target_calories: newTargets.yearlyTarget,
+        });
 
-        if (updated) {
-            setUser(updated);
+        if (success) {
+            setIsEditing(false);
         }
-        setIsEditing(false);
+        setIsSaving(false);
     };
 
     const handleCancelEdit = () => {
-        if (user) {
-            setEditWeight(user.weight);
-            setEditHeight(user.height);
-            setEditAge(user.age);
-            setEditGender(user.gender);
+        if (profile) {
+            setEditWeight(profile.weight);
+            setEditHeight(profile.height);
+            setEditAge(profile.age);
+            setEditGender(profile.gender as 'male' | 'female');
         }
         setIsEditing(false);
     };
 
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploadingAvatar(true);
+        await uploadAvatar(file);
+        setIsUploadingAvatar(false);
+
+        // Reset input so the same file can be selected again
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     // Calculate progress
-    const progressPercent = user
-        ? Math.min(Math.round((user.totalCalories / user.targetCalories) * 100), 100)
-        : 0;
+    const totalCalories = yearlyCalories || profile?.total_calories || 0;
+    const targetCalories = profile?.target_calories || targets?.yearlyTarget || 127500;
+    const progressPercent = Math.min(Math.round((totalCalories / targetCalories) * 100), 100);
+
+    if (authLoading || profileLoading) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center bg-background-light gap-4">
+                <div className="animate-pulse">
+                    <Logo size="xl" />
+                </div>
+                <p className="text-sm text-slate-500 animate-pulse">Loading...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="relative flex min-h-screen w-full flex-col items-center bg-background-light text-text-dark font-display overflow-x-hidden selection:bg-accent selection:text-primary">
@@ -90,36 +136,65 @@ export default function Profile() {
                             <p className="text-text-muted text-sm font-medium">Manage your account</p>
                         </div>
                     </div>
-                    <button className="relative w-10 h-10 overflow-hidden border border-gray-100 rounded-full shadow-sm">
-                        <Image
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHIWp0tJ-eM5yBvLQddeyk2iSsJhOh-tZ7oIj32PgT7TiAehP_s5Z3ntVQnCnQIiD8VyL96sK1qnbUVfdnS-1I4ASl-YClxJQQQPb8A82XtwzfY30hcLPmCo422PfTwyk0RnuHlY1MtNM3qVXnSd2hO-w4dZLrxscX1Bw-6KNHmk8zX5x-2IMIimkJyXejFZg8c0fvmPL-8dNWjx0vB-IME3aOyZ62LXVnbRDgPYaGtr-2LlmOuC0Eq3eNksGP1goER-EaKjSMdydE"
-                            alt="User Profile"
-                            fill
-                            className="object-cover"
-                        />
+                    <button
+                        onClick={() => router.push('/dashboard')}
+                        className="relative w-10 h-10 overflow-hidden border border-gray-100 rounded-full shadow-sm bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20"
+                    >
+                        <span className="material-symbols-outlined">home</span>
                     </button>
                 </header>
 
                 <main className="flex flex-col px-6 gap-6 w-full">
                     {/* Profile Card */}
                     <div className="relative flex flex-col items-center p-8 text-center overflow-hidden bg-white shadow-sm rounded-3xl border border-gray-100">
-                        <div className="w-28 h-28 p-1.5 mb-4 bg-white rounded-full ring-2 ring-gray-50 shadow-sm relative">
-                            <Image
-                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhxuk_Sq3FnjsKChuJdtiXs91Qt-Tmzmdd5t-yl-Hzrp2haOrd4e9v7he5qbuAKaFNc-Y0iN81XvvwUncJEJSRfV1u9xaMuJQ8s6azb1EMvrOz8n8wTKtbQ3TPZnpOL_q9lfWhUSo_Xidt9xSlZfDPUTcF-czQldhXKMYrd_xlpo19qfAU0amd7Uqc-qJpJ8Q2pV0nHB1MRW37mTGwn4QMgekkIEx224Dc6RMK3TsSd0RAcG7vewEb-l-oa40elv9JM8Y4-CpnUe6t"
-                                alt="Avatar"
-                                fill
-                                className="object-cover rounded-full"
-                            />
-                        </div>
-                        <h2 className="mb-1 text-2xl font-extrabold text-primary">{user?.name || 'Coworker'}</h2>
+                        {/* Hidden file input */}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleAvatarChange}
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                        />
+
+                        {/* Avatar with upload overlay */}
+                        <button
+                            onClick={handleAvatarClick}
+                            disabled={isUploadingAvatar}
+                            className="w-28 h-28 p-1.5 mb-4 bg-primary/10 rounded-full ring-2 ring-gray-50 shadow-sm relative flex items-center justify-center group cursor-pointer hover:ring-primary/30 transition-all overflow-hidden disabled:cursor-wait"
+                        >
+                            {profile?.avatar_url ? (
+                                <Image
+                                    src={profile.avatar_url}
+                                    alt="Avatar"
+                                    fill
+                                    className="object-cover rounded-full"
+                                />
+                            ) : (
+                                <span className="material-symbols-outlined text-5xl text-primary">person</span>
+                            )}
+
+                            {/* Upload overlay */}
+                            <div className={`absolute inset-0 bg-black/50 rounded-full flex items-center justify-center transition-opacity ${isUploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                {isUploadingAvatar ? (
+                                    <span className="material-symbols-outlined text-2xl text-white animate-spin">progress_activity</span>
+                                ) : (
+                                    <span className="material-symbols-outlined text-2xl text-white">photo_camera</span>
+                                )}
+                            </div>
+                        </button>
+
+                        <h2 className="mb-1 text-2xl font-extrabold text-primary">{profile?.name || 'Coworker'}</h2>
+                        <p className="mb-2 text-sm text-gray-500">{user?.email}</p>
                         <p className="mb-5 font-medium text-gray-500">IT & Digital Team</p>
                         <div className="flex flex-wrap justify-center w-full gap-2">
                             <span className="px-4 py-2 text-xs font-extrabold uppercase tracking-wide shadow-sm rounded-xl bg-accent text-primary">
                                 {progressPercent >= 100 ? '🏆 GOAL ACHIEVED' : `${progressPercent}% COMPLETE`}
                             </span>
-                            <span className="px-4 py-2 text-xs font-extrabold uppercase tracking-wide shadow-sm rounded-xl bg-accent text-primary">
-                                TOP 10%
-                            </span>
+                            {profile?.nik && (
+                                <span className="px-4 py-2 text-xs font-extrabold uppercase tracking-wide shadow-sm rounded-xl bg-gray-100 text-gray-600">
+                                    NIK: {profile.nik}
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -204,15 +279,24 @@ export default function Profile() {
                                 <div className="flex gap-3 mt-2">
                                     <button
                                         onClick={handleCancelEdit}
-                                        className="flex-1 py-2.5 rounded-xl border border-gray-300 font-bold text-sm text-gray-600 hover:bg-gray-50"
+                                        disabled={isSaving}
+                                        className="flex-1 py-2.5 rounded-xl border border-gray-300 font-bold text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={handleSaveProfile}
-                                        className="flex-1 py-2.5 rounded-xl bg-primary font-bold text-sm text-white hover:bg-[#004f93]"
+                                        disabled={isSaving}
+                                        className="flex-1 py-2.5 rounded-xl bg-primary font-bold text-sm text-white hover:bg-[#004f93] disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
-                                        Save & Recalculate
+                                        {isSaving ? (
+                                            <>
+                                                <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            'Save & Recalculate'
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -220,49 +304,59 @@ export default function Profile() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                                     <span className="material-symbols-outlined text-primary text-xl">
-                                        {user?.gender === 'female' ? 'female' : 'male'}
+                                        {profile?.gender === 'female' ? 'female' : 'male'}
                                     </span>
                                     <div>
                                         <p className="text-xs text-gray-400">Gender</p>
-                                        <p className="font-bold text-gray-700 capitalize">{user?.gender || 'Male'}</p>
+                                        <p className="font-bold text-gray-700 capitalize">{profile?.gender || 'Male'}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                                     <span className="material-symbols-outlined text-primary text-xl">monitor_weight</span>
                                     <div>
                                         <p className="text-xs text-gray-400">Weight</p>
-                                        <p className="font-bold text-gray-700">{user?.weight || 70} kg</p>
+                                        <p className="font-bold text-gray-700">{profile?.weight || 70} kg</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                                     <span className="material-symbols-outlined text-primary text-xl">height</span>
                                     <div>
                                         <p className="text-xs text-gray-400">Height</p>
-                                        <p className="font-bold text-gray-700">{user?.height || 170} cm</p>
+                                        <p className="font-bold text-gray-700">{profile?.height || 170} cm</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                                     <span className="material-symbols-outlined text-primary text-xl">cake</span>
                                     <div>
                                         <p className="text-xs text-gray-400">Age</p>
-                                        <p className="font-bold text-gray-700">{user?.age || 30} years</p>
+                                        <p className="font-bold text-gray-700">{profile?.age || 30} years</p>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
 
+                    {/* Motivational Message */}
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                        <span className="material-symbols-outlined text-green-600 text-xl">emoji_events</span>
+                        <div>
+                            <p className="text-sm font-bold text-green-800 mb-1">💪 Target ini sangat achievable!</p>
+                            <p className="text-xs text-green-700 leading-relaxed">
+                                {profile ? getMotivationText(Math.round(targetCalories / 52), profile.weight) : 'Hanya butuh beberapa menit jalan per minggu!'}
+                            </p>
+                        </div>
+                    </div>
                     {/* Calorie Target Section */}
                     <div className="p-6 bg-gradient-to-r from-primary/5 to-accent/20 rounded-3xl border border-primary/10 relative">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <p className="text-xs font-bold text-primary/70 uppercase tracking-wider mb-1">Your Yearly Target</p>
                                 <p className="text-3xl font-black text-primary">
-                                    {(user?.targetCalories || 16439).toLocaleString()}
+                                    {targetCalories.toLocaleString()}
                                     <span className="text-lg font-bold text-primary/70 ml-1">cal</span>
                                 </p>
                                 <p className="text-xs text-slate-500 mt-1">
-                                    ~{Math.round((user?.targetCalories || 16439) / 52).toLocaleString()} cal/week
+                                    ~{Math.round(targetCalories / 52).toLocaleString()} cal/week
                                 </p>
                             </div>
                             <button
@@ -279,7 +373,7 @@ export default function Profile() {
                         {/* Progress */}
                         <div className="flex items-end justify-between mb-2">
                             <span className="text-sm font-bold text-primary/80">
-                                {(user?.totalCalories || 0).toLocaleString()} cal achieved
+                                {totalCalories.toLocaleString()} cal achieved
                             </span>
                             <span className="text-sm font-bold text-primary">{progressPercent}%</span>
                         </div>
@@ -301,82 +395,9 @@ export default function Profile() {
                         )}
                     </div>
 
-                    {/* Motivational Message */}
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                        <span className="material-symbols-outlined text-green-600 text-xl">emoji_events</span>
-                        <div>
-                            <p className="text-sm font-bold text-green-800 mb-1">💪 Target ini sangat achievable!</p>
-                            <p className="text-xs text-green-700 leading-relaxed">
-                                {user ? getMotivationText(Math.round((user.targetCalories || 16439) / 52), user.weight) : 'Hanya butuh beberapa menit jalan per minggu!'}
-                            </p>
-                        </div>
-                    </div>
 
-                    {/* Settings & Preferences */}
-                    <div className="p-6 bg-white shadow-sm rounded-3xl border border-gray-100">
-                        <h3 className="mb-4 text-lg font-extrabold text-primary">Settings & Preferences</h3>
-                        <div className="flex flex-col gap-1">
-                            {/* Notification */}
-                            <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-full bg-blue-50 text-primary">
-                                        <span className="text-[20px] material-symbols-outlined">notifications</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-primary">Notifications</span>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={notificationsEnabled}
-                                        onChange={() => setNotificationsEnabled(!notificationsEnabled)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                                </label>
-                            </div>
 
-                            {/* Email Digest */}
-                            <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-full bg-blue-50 text-primary">
-                                        <span className="text-[20px] material-symbols-outlined">mark_email_unread</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-primary">Email Digest</span>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={emailDigestEnabled}
-                                        onChange={() => setEmailDigestEnabled(!emailDigestEnabled)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                                </label>
-                            </div>
 
-                            {/* Help & Support */}
-                            <button className="flex items-center justify-between w-full py-3 text-left transition-colors border-b border-gray-50 last:border-0 group">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="flex items-center justify-center w-9 h-9 transition-colors shrink-0 rounded-full bg-blue-50 text-primary group-hover:bg-primary group-hover:text-white">
-                                        <span className="text-[20px] material-symbols-outlined">help_outline</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-primary">Help & Support</span>
-                                </div>
-                                <span className="text-xl text-gray-300 transition-colors material-symbols-outlined group-hover:text-primary">chevron_right</span>
-                            </button>
-
-                            {/* Privacy & Data */}
-                            <button className="flex items-center justify-between w-full py-3 text-left transition-colors border-b border-gray-50 last:border-0 group">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="flex items-center justify-center w-9 h-9 transition-colors shrink-0 rounded-full bg-blue-50 text-primary group-hover:bg-primary group-hover:text-white">
-                                        <span className="text-[20px] material-symbols-outlined">lock</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-primary">Privacy & Data</span>
-                                </div>
-                                <span className="text-xl text-gray-300 transition-colors material-symbols-outlined group-hover:text-primary">chevron_right</span>
-                            </button>
-                        </div>
-                    </div>
 
                     {/* Sign Out Button */}
                     <button

@@ -153,7 +153,6 @@ export default function Dashboard() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-text-dark font-bold">{activity.calories} cal</p>
-                                            <p className="text-primary text-xs">+{activity.calories} pts</p>
                                         </div>
                                     </div>
                                 ))

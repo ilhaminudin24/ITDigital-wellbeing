@@ -1,11 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 
 export default function BottomNav() {
     const pathname = usePathname();
+    const [isHidden, setIsHidden] = useState(false);
+
+    // Listen for modal state changes to hide/show nav
+    useEffect(() => {
+        const handleModalStateChange = (event: CustomEvent<{ isOpen: boolean }>) => {
+            setIsHidden(event.detail.isOpen);
+        };
+
+        window.addEventListener('modal-state-change', handleModalStateChange as EventListener);
+        return () => {
+            window.removeEventListener('modal-state-change', handleModalStateChange as EventListener);
+        };
+    }, []);
 
     if (pathname === "/" || pathname === "/login") return null;
 
@@ -18,7 +32,12 @@ export default function BottomNav() {
     ];
 
     return (
-        <nav className="fixed bottom-0 left-0 w-full z-50 bg-nav-bg border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <nav
+            className={clsx(
+                "fixed bottom-0 left-0 w-full z-50 bg-nav-bg border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] transition-transform duration-300",
+                isHidden ? "translate-y-full" : "translate-y-0"
+            )}
+        >
             <div className="max-w-lg mx-auto w-full px-2 pb-6 pt-3">
                 <ul className="flex justify-between items-center">
                     {navItems.map((item) => {
@@ -52,3 +71,4 @@ export default function BottomNav() {
         </nav>
     );
 }
+

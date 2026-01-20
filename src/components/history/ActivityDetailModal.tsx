@@ -24,7 +24,6 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
     const [isVisible, setIsVisible] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState(0);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const startY = useRef<number | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -39,11 +38,13 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
         await onDelete(activity.id);
     };
 
-    // Focus Management & Scroll Lock
+    // Focus Management & Scroll Lock & BottomNav visibility
     useEffect(() => {
         if (activity) {
             setIsVisible(true);
             document.body.style.overflow = "hidden";
+            // Dispatch event to hide BottomNav
+            window.dispatchEvent(new CustomEvent('modal-state-change', { detail: { isOpen: true } }));
             // Focus trap
             setTimeout(() => {
                 closeButtonRef.current?.focus();
@@ -52,10 +53,13 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
             setIsVisible(false);
             setDragOffset(0);
             document.body.style.overflow = "";
+            // Dispatch event to show BottomNav
+            window.dispatchEvent(new CustomEvent('modal-state-change', { detail: { isOpen: false } }));
         }
 
         return () => {
             document.body.style.overflow = "";
+            window.dispatchEvent(new CustomEvent('modal-state-change', { detail: { isOpen: false } }));
         };
     }, [activity]);
 
@@ -98,58 +102,68 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
 
     if (!activity && !isVisible) return null;
 
+    // Show delete button whenever onDelete is provided - handleDelete validates id
+    const showDeleteButton = !!onDelete;
+
     return (
         <div className={clsx(
-            "fixed inset-0 z-50 flex items-end sm:items-center justify-center",
+            "fixed inset-0 z-[60] flex items-end sm:items-center justify-center",
             activity ? "pointer-events-auto" : "pointer-events-none"
         )}>
             {/* Backdrop */}
             <div
                 className={clsx(
-                    "absolute inset-0 bg-black/20 backdrop-blur-[2px] transition-opacity duration-300",
+                    "absolute inset-0 bg-black/30 backdrop-blur-[2px] transition-opacity duration-300",
                     isVisible ? "opacity-100" : "opacity-0"
                 )}
                 onClick={handleClose}
                 aria-hidden="true"
             />
 
-            {/* Modal Container */}
+            {/* Modal Container - Optimized height for mobile */}
             <div
                 ref={modalRef}
                 className={clsx(
-                    "relative w-full max-w-lg bg-white h-[92dvh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-transform duration-500",
+                    "relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col transition-transform duration-500",
+                    // Reduced height on mobile to account for bottom nav bar
+                    "max-h-[75dvh] sm:max-h-[80vh]",
                     isVisible ? "translate-y-0" : "translate-y-full"
                 )}
                 style={{
                     transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
                     transform: isDragging ? `translateY(${dragOffset}px)` : isVisible ? "translateY(0)" : "translateY(100%)",
-                    transition: isDragging ? "none" : undefined
+                    transition: isDragging ? "none" : undefined,
+                    // Safe area for iPhone notch/home indicator
+                    paddingBottom: "env(safe-area-inset-bottom, 0px)"
                 }}
                 onClick={(e) => e.stopPropagation()}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             >
-                {/* Drag Handle */}
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-300 rounded-full z-30 opacity-50 sm:hidden"></div>
+                {/* Drag Handle - More visible */}
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-400 rounded-full z-30 sm:hidden" />
 
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white/90 backdrop-blur-sm sticky top-0 z-20">
-                    <h2 className="text-lg font-bold text-slate-900">Activity Details</h2>
+                {/* Header - Compact */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-100 bg-white sticky top-0 z-20 shrink-0">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900">Activity Details</h2>
                     <button
                         ref={closeButtonRef}
                         onClick={handleClose}
-                        className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-slate-500 hover:bg-gray-200 transition-colors focus:ring-2 focus:ring-primary focus:outline-none"
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-gray-100 flex items-center justify-center text-slate-500 hover:bg-gray-200 transition-colors focus:ring-2 focus:ring-primary focus:outline-none"
                         aria-label="Close details"
                     >
                         <span className="material-symbols-outlined !text-xl">close</span>
                     </button>
                 </div>
 
-                {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto pb-8 bg-white">
-                    {/* Hero Section with Photo */}
-                    <div className="h-64 w-full bg-slate-100 relative">
+                {/* Scrollable Content - min-h-0 is critical for flex scroll! */}
+                <div
+                    className="flex-1 min-h-0 overflow-y-auto bg-white"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                    {/* Hero Section with Photo - Reduced height on mobile */}
+                    <div className="h-40 sm:h-56 w-full bg-slate-100 relative shrink-0">
                         {activity?.photo ? (
                             <div
                                 className="absolute inset-0 bg-cover bg-center"
@@ -157,90 +171,91 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
                             />
                         ) : (
                             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/20">
-                                <span className="material-symbols-outlined text-6xl text-primary/30">directions_walk</span>
+                                <span className="material-symbols-outlined text-5xl sm:text-6xl text-primary/30">directions_walk</span>
                             </div>
                         )}
                     </div>
 
-                    <div className="px-6 -mt-6 relative z-10">
-                        {/* Meta Card */}
-                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6 flex flex-col gap-1">
+                    <div className="px-4 sm:px-6 -mt-4 sm:-mt-6 relative z-10 pb-4">
+                        {/* Meta Card - Compact */}
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 mb-4 sm:mb-6 flex flex-col gap-0.5">
                             <div className="flex items-center gap-2 text-slate-900">
-                                <span className="material-symbols-outlined !text-lg text-primary">calendar_today</span>
-                                <span className="font-bold">{activity?.date.day} {activity?.date.month} 2026</span>
+                                <span className="material-symbols-outlined !text-base sm:!text-lg text-primary">calendar_today</span>
+                                <span className="font-bold text-sm sm:text-base">{activity?.date.day} {activity?.date.month} 2026</span>
                             </div>
-                            <div className="flex items-center gap-2 text-slate-500 text-sm ml-7">
+                            <div className="flex items-center gap-2 text-slate-500 text-xs sm:text-sm ml-6 sm:ml-7">
                                 <span>{activity?.title || "Walk"}</span>
                             </div>
                         </div>
 
-                        {/* Calories Card */}
-                        <div className="mb-6 bg-gradient-to-r from-primary/5 to-accent/20 rounded-2xl p-6 border border-primary/10">
+                        {/* Calories Card - Compact */}
+                        <div className="mb-4 sm:mb-6 bg-gradient-to-r from-primary/5 to-accent/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-primary/10">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs font-bold text-primary/70 uppercase tracking-wider mb-1">Calories Burned</p>
-                                    <p className="text-4xl font-black text-primary">
+                                    <p className="text-[10px] sm:text-xs font-bold text-primary/70 uppercase tracking-wider mb-0.5 sm:mb-1">Calories Burned</p>
+                                    <p className="text-3xl sm:text-4xl font-black text-primary">
                                         {activity?.calories || 0}
-                                        <span className="text-lg font-bold text-primary/70 ml-1">cal</span>
+                                        <span className="text-base sm:text-lg font-bold text-primary/70 ml-1">cal</span>
                                     </p>
                                 </div>
-                                <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-3xl text-primary">local_fire_department</span>
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-accent/30 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-2xl sm:text-3xl text-primary">local_fire_department</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Activity Info */}
-                        <div className="mb-8">
-                            <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide opacity-80">Activity Info</h3>
-                            <div className="flex flex-col gap-4">
+                        {/* Activity Info - Compact */}
+                        <div>
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-900 mb-3 sm:mb-4 uppercase tracking-wide opacity-80">Activity Info</h3>
+                            <div className="flex flex-col gap-3 sm:gap-4">
                                 {/* Location */}
-                                <div className="flex items-start gap-4 bg-gray-50 rounded-xl p-4">
-                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                        <span className="material-symbols-outlined text-primary">location_on</span>
+                                <div className="flex items-center gap-3 sm:gap-4 bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-primary !text-lg sm:!text-xl">location_on</span>
                                     </div>
-                                    <div>
-                                        <div className="text-xs text-slate-500 mb-1">Exercise Location</div>
-                                        <div className="text-sm font-bold text-slate-900">{activity?.location || "Location"}</div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-[10px] sm:text-xs text-slate-500 mb-0.5">Exercise Location</div>
+                                        <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">{activity?.location || "Location"}</div>
                                     </div>
                                 </div>
 
                                 {/* Distance */}
-                                <div className="flex items-start gap-4 bg-gray-50 rounded-xl p-4">
-                                    <div className="w-10 h-10 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
-                                        <span className="material-symbols-outlined text-primary">straighten</span>
+                                <div className="flex items-center gap-3 sm:gap-4 bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-primary !text-lg sm:!text-xl">straighten</span>
                                     </div>
-                                    <div>
-                                        <div className="text-xs text-slate-500 mb-1">Jarak (Distance)</div>
-                                        <div className="text-sm font-bold text-slate-900">{activity?.distance || 0} km</div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-[10px] sm:text-xs text-slate-500 mb-0.5">Jarak (Distance)</div>
+                                        <div className="text-xs sm:text-sm font-bold text-slate-900">{activity?.distance || 0} km</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Delete Button */}
-                        {onDelete && activity?.id && (
-                            <button
-                                onClick={handleDelete}
-                                disabled={isDeleting}
-                                className="w-full mt-4 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-bold py-4 rounded-2xl shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                            >
-                                {isDeleting ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        <span>Menghapus...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined">delete</span>
-                                        <span>Hapus Aktivitas</span>
-                                    </>
-                                )}
-                            </button>
-                        )}
                     </div>
-                    <div className="h-10"></div>
                 </div>
+
+                {/* Sticky Delete Button Footer - ALWAYS VISIBLE */}
+                {showDeleteButton && (
+                    <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+                        <button
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="w-full bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-bold py-3.5 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Menghapus...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined !text-lg sm:!text-xl">delete</span>
+                                    <span>Hapus Aktivitas</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

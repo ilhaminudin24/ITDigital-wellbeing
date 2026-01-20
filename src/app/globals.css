@@ -94,3 +94,106 @@ body {
 main {
   animation: fadeIn 0.4s ease-out;
 }
+
+/* ============================================================
+   LEADERBOARD ANIMATIONS
+   ============================================================ */
+
+/* Podium entrance animation */
+@keyframes podiumEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.podium-entrance {
+  animation: podiumEntrance 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.podium-entrance:nth-child(1) { animation-delay: 0.15s; }
+.podium-entrance:nth-child(2) { animation-delay: 0.05s; }
+.podium-entrance:nth-child(3) { animation-delay: 0.25s; }
+
+/* List item stagger animation */
+@keyframes listSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.list-slide-in {
+  animation: listSlideIn 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+/* Current user highlight pulse */
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 88, 163, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 88, 163, 0);
+  }
+}
+
+.highlight-pulse {
+  animation: highlightPulse 2s ease-in-out infinite;
+}
+
+/* Counter count-up effect */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.count-up {
+  animation: countUp 0.4s ease-out forwards;
+}
+
+/* Medal shine effect */
+@keyframes medalShine {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.medal-shine {
+  animation: medalShine 2s ease-in-out infinite;
+}
+
+/* Leaderboard color variables */
+.leaderboard-gold { 
+  --medal-color: #FFD700; 
+  --medal-bg: rgba(255, 215, 0, 0.1);
+}
+.leaderboard-silver { 
+  --medal-color: #C0C0C0; 
+  --medal-bg: rgba(192, 192, 192, 0.1);
+}
+.leaderboard-bronze { 
+  --medal-color: #CD7F32; 
+  --medal-bg: rgba(205, 127, 50, 0.1);
+}

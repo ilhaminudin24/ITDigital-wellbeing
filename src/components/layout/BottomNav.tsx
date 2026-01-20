@@ -28,7 +28,7 @@ export default function BottomNav() {
         { name: "Record", href: "/record", icon: "radio_button_checked" },
         { name: "History", href: "/history", icon: "history" },
         { name: "Report", href: "/report", icon: "bar_chart" },
-        { name: "Profile", href: "/profile", icon: "account_circle" },
+        { name: "Rank", href: "/leaderboard", icon: "leaderboard" },
     ];
 
     return (

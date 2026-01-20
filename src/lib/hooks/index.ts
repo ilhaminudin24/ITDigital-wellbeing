@@ -6,4 +6,6 @@
 export { useAuth } from './useAuth'
 export { useProfile } from './useProfile'
 export { useActivities } from './useActivities'
+export { useLeaderboard } from './useLeaderboard'
+
 

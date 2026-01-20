@@ -15,6 +15,7 @@
 - 📝 **Record Activity** - Input lokasi, jarak (km), kalori manual, upload foto
 - 📋 **History** - Riwayat aktivitas dengan filter 12 bulan + hapus aktivitas
 - 📈 **Report** - Visualisasi bar chart kalori per bulan
+- 🏆 **Leaderboard** - Ranking kalori antar coworker dengan podium Top 3
 - 👤 **Profile** - Edit profil fisik, avatar upload, recalculate target
 - 💾 **Backend** - Supabase (PostgreSQL, Storage, Auth)
 - 🚀 **Deployment** - Vercel dengan SSR support
@@ -53,6 +54,7 @@ ITDigital-wellbeing/
 │   │   ├── record/page.tsx    # Activity recording (manual calories)
 │   │   ├── history/page.tsx   # Activity history + delete feature
 │   │   ├── report/page.tsx    # Progress reports (calories charts)
+│   │   ├── leaderboard/page.tsx # Coworker ranking leaderboard
 │   │   └── profile/page.tsx   # User profile + avatar upload
 │   ├── components/
 │   │   ├── layout/
@@ -65,6 +67,12 @@ ITDigital-wellbeing/
 │   │   │   ├── ActivityList.tsx       # Activity list with filter
 │   │   │   ├── ActivityItem.tsx       # Single activity card
 │   │   │   └── ActivityDetailModal.tsx # Detail modal + delete
+│   │   ├── leaderboard/
+│   │   │   ├── index.ts              # Component exports
+│   │   │   ├── LeaderboardPodium.tsx # Top 3 podium display
+│   │   │   ├── LeaderboardList.tsx   # Rank 4+ list
+│   │   │   ├── CurrentUserRank.tsx   # User position card
+│   │   │   └── LeaderboardEmpty.tsx  # Empty state (<3 users)
 │   │   └── ui/
 │   │       └── Logo.tsx       # Reusable logo component
 │   ├── lib/
@@ -77,13 +85,15 @@ ITDigital-wellbeing/
 │   │   │   ├── index.ts       # Export all hooks
 │   │   │   ├── useAuth.ts     # Authentication state
 │   │   │   ├── useProfile.ts  # User profile state
-│   │   │   └── useActivities.ts # Activities CRUD & filtering
+│   │   │   ├── useActivities.ts # Activities CRUD & filtering
+│   │   │   └── useLeaderboard.ts # Leaderboard data & ranking
 │   │   ├── services/          # API service layer
 │   │   │   ├── index.ts       # Export all services
 │   │   │   ├── auth.service.ts    # Auth operations
 │   │   │   ├── profile.service.ts # Profile CRUD
 │   │   │   ├── activity.service.ts # Activity CRUD
-│   │   │   └── storage.service.ts  # Photo upload/delete
+│   │   │   ├── storage.service.ts  # Photo upload/delete
+│   │   │   └── leaderboard.service.ts # Leaderboard queries
 │   │   └── userData.ts        # BMR calculations & utilities
 │   └── middleware.ts          # Auth middleware (route protection)
 ├── docs/
@@ -137,16 +147,18 @@ flowchart TD
         Q -->|Record| R[📍 Record Page]
         Q -->|History| S[📋 History Page]
         Q -->|Report| T[📈 Report Page]
-        Q -->|Profile| U[👤 Profile Page]
+        Q -->|Rank| U[🏆 Leaderboard Page]
+        Q -->|Profile via Header| W[👤 Profile Page]
     end
 
     subgraph Actions["⚡ Quick Actions"]
         R --> V[Save Activity to Supabase]
         V --> F
-        S --> W[View/Delete Activity]
-        T --> X[View Charts]
-        U --> Y[Logout]
-        Y --> C
+        S --> X[View/Delete Activity]
+        T --> Y[View Charts]
+        U --> Z[View Rankings]
+        W --> AA[Logout]
+        AA --> C
     end
 
     style Entry fill:#e3f2fd

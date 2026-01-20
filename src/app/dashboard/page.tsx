@@ -78,12 +78,6 @@ export default function Dashboard() {
                             onClick={() => router.push('/profile')}
                             className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-primary"
                         >
-                            <span className="material-symbols-outlined">settings</span>
-                        </button>
-                        <button
-                            onClick={() => router.push('/profile')}
-                            className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-primary"
-                        >
                             <span className="material-symbols-outlined">person</span>
                         </button>
                     </div>

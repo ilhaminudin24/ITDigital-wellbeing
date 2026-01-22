@@ -163,14 +163,29 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
                     style={{ WebkitOverflowScrolling: 'touch' }}
                 >
                     {/* Hero Section with Photo - Reduced height on mobile */}
-                    <div className="h-40 sm:h-56 w-full bg-slate-100 relative shrink-0">
+                    {/* Hero Section with Photo - Adaptive height */}
+                    <div className="w-full bg-slate-900 relative shrink-0 flex items-center justify-center overflow-hidden min-h-[250px] sm:min-h-[300px]">
                         {activity?.photo ? (
-                            <div
-                                className="absolute inset-0 bg-cover bg-center"
-                                style={{ backgroundImage: `url('${activity.photo}')` }}
-                            />
+                            <>
+                                {/* Blurred Background Layer for localized ambience */}
+                                <div
+                                    className="absolute inset-0 bg-cover bg-center blur-xl opacity-60 scale-110"
+                                    style={{ backgroundImage: `url('${activity.photo}')` }}
+                                />
+
+                                {/* Gradient Overlay to ensure text readability if needed, and depth */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+
+                                {/* Main Image - Contain to show FULL image */}
+                                <img
+                                    src={activity.photo}
+                                    alt="Activity proof"
+                                    className="relative z-10 w-full h-auto max-h-[50vh] object-contain shadow-lg"
+                                    style={{ maxHeight: 'min(50vh, 500px)' }}
+                                />
+                            </>
                         ) : (
-                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/20">
+                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/20 bg-slate-100">
                                 <span className="material-symbols-outlined text-5xl sm:text-6xl text-primary/30">directions_walk</span>
                             </div>
                         )}

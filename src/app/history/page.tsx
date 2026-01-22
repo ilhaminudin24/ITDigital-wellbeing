@@ -14,6 +14,7 @@ interface Activity {
     id?: string;
     date: { day: number; month: string };
     title: string;
+    activity_type?: string;
     calories: number;
     distance: number;
     photo?: string;
@@ -58,6 +59,7 @@ export default function HistoryPage() {
                     month: monthNames[date.getMonth()]
                 },
                 title: act.location,
+                activity_type: act.activity_type,
                 calories: act.calories,
                 distance: act.distance,
                 photo: act.photo_url || undefined,

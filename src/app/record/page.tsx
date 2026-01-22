@@ -13,6 +13,7 @@ export default function RecordPage() {
     const { user, isLoading: authLoading } = useAuth();
     const { addActivity } = useActivities();
 
+    const [activityType, setActivityType] = useState<string>('Walking');
     const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [location, setLocation] = useState<string>('');
     const [distance, setDistance] = useState<number>(1.0);
@@ -24,6 +25,20 @@ export default function RecordPage() {
     const [shake, setShake] = useState<boolean>(false);
     const [uploadProgress, setUploadProgress] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const activityTypes = [
+        { value: 'Walking', label: 'Walking (Jalan Kaki)' },
+        { value: 'Running', label: 'Running (Lari)' },
+        { value: 'Cycling', label: 'Cycling (Sepeda)' },
+        { value: 'Swimming', label: 'Swimming (Renang)' },
+        { value: 'Futsal', label: 'Futsal' },
+        { value: 'Football', label: 'Football (Sepak Bola)' },
+        { value: 'Badminton', label: 'Badminton (Bulu Tangkis)' },
+        { value: 'Basketball', label: 'Basketball (Basket)' },
+        { value: 'Gym', label: 'Gym/Fitness' },
+        { value: 'Yoga', label: 'Yoga' },
+        { value: 'Aerobics', label: 'Aerobics/Zumba' },
+    ];
 
     // Redirect if not authenticated
     useEffect(() => {
@@ -115,6 +130,7 @@ export default function RecordPage() {
             setUploadProgress('Saving activity...');
 
             const success = await addActivity({
+                activity_type: activityType,
                 activity_date: date,
                 location: location.trim(),
                 distance,
@@ -170,6 +186,31 @@ export default function RecordPage() {
                 </header>
 
                 <div className="px-6 flex flex-col gap-6 w-full">
+                    {/* Activity Type Input */}
+                    <div className="group">
+                        <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Activity Type</label>
+                        <div className="flex items-center w-full rounded-full bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-primary overflow-hidden h-14 transition-all hover:bg-gray-50/50 shadow-sm relative">
+                            <div className="pl-4 pr-3 flex items-center justify-center text-primary">
+                                <span className="material-symbols-outlined filled">directions_run</span>
+                            </div>
+                            <select
+                                className="w-full bg-transparent border-none text-black focus:ring-0 px-0 text-base focus:outline-none h-full appearance-none cursor-pointer"
+                                value={activityType}
+                                onChange={(e) => setActivityType(e.target.value)}
+                                style={{ color: 'black' }}
+                            >
+                                {activityTypes.map((type) => (
+                                    <option key={type.value} value={type.value}>
+                                        {type.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute right-4 pointer-events-none text-gray-400">
+                                <span className="material-symbols-outlined">expand_more</span>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Date Input */}
                     <div className="group">
                         <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">Date</label>

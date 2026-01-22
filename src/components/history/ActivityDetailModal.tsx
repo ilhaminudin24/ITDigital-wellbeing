@@ -7,6 +7,7 @@ interface Activity {
     id?: string;
     date: { day: number; month: string };
     title: string;
+    activity_type?: string;
     calories: number;
     distance: number;
     photo?: string;
@@ -19,6 +20,19 @@ interface ActivityDetailModalProps {
     onDelete?: (id: string) => Promise<void>;
     isDeleting?: boolean;
 }
+
+const getActivityIcon = (type?: string) => {
+    const t = type?.toLowerCase() || '';
+    if (t.includes('run') || t.includes('lari')) return 'directions_run';
+    if (t.includes('cycl') || t.includes('sepeda')) return 'directions_bike';
+    if (t.includes('swim') || t.includes('renang')) return 'pool';
+    if (t.includes('yoga')) return 'self_improvement';
+    if (t.includes('gym') || t.includes('fitness')) return 'fitness_center';
+    if (t.includes('football') || t.includes('soccer') || t.includes('bola') || t.includes('futsal')) return 'sports_soccer';
+    if (t.includes('basket')) return 'sports_basketball';
+    if (t.includes('badminton') || t.includes('bulu')) return 'sports_tennis';
+    return 'directions_walk'; // Default
+};
 
 export default function ActivityDetailModal({ activity, onClose, onDelete, isDeleting = false }: ActivityDetailModalProps) {
     const [isVisible, setIsVisible] = useState(false);
@@ -186,7 +200,9 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
                             </>
                         ) : (
                             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/20 bg-slate-100">
-                                <span className="material-symbols-outlined text-5xl sm:text-6xl text-primary/30">directions_walk</span>
+                                <span className="material-symbols-outlined text-5xl sm:text-6xl text-primary/30">
+                                    {getActivityIcon(activity?.activity_type)}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -223,6 +239,21 @@ export default function ActivityDetailModal({ activity, onClose, onDelete, isDel
                         <div>
                             <h3 className="text-xs sm:text-sm font-bold text-slate-900 mb-3 sm:mb-4 uppercase tracking-wide opacity-80">Activity Info</h3>
                             <div className="flex flex-col gap-3 sm:gap-4">
+                                {/* Type */}
+                                <div className="flex items-center gap-3 sm:gap-4 bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-primary !text-lg sm:!text-xl">
+                                            {getActivityIcon(activity?.activity_type)}
+                                        </span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-[10px] sm:text-xs text-slate-500 mb-0.5">Activity Type</div>
+                                        <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                                            {activity?.activity_type || "Walking"}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Location */}
                                 <div className="flex items-center gap-3 sm:gap-4 bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
                                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

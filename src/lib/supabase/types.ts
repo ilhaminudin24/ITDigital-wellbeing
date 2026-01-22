@@ -17,6 +17,7 @@ export type Database = {
             activities: {
                 Row: {
                     activity_date: string
+                    activity_type: string
                     calories: number
                     created_at: string
                     distance: number
@@ -27,6 +28,7 @@ export type Database = {
                 }
                 Insert: {
                     activity_date: string
+                    activity_type?: string
                     calories: number
                     created_at?: string
                     distance: number
@@ -37,6 +39,7 @@ export type Database = {
                 }
                 Update: {
                     activity_date?: string
+                    activity_type?: string
                     calories?: number
                     created_at?: string
                     distance?: number

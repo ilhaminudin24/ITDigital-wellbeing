@@ -9,8 +9,11 @@ import {
     LeaderboardList,
     CurrentUserRank,
     LeaderboardEmpty,
+    UserDetailSheet,
 } from "@/components/leaderboard";
 import Logo from "@/components/ui/Logo";
+import { useState } from "react";
+import { LeaderboardEntry } from "@/lib/services/leaderboard.service";
 
 export default function LeaderboardPage() {
     const router = useRouter();
@@ -21,6 +24,14 @@ export default function LeaderboardPage() {
         error,
         hasMinimumParticipants,
     } = useLeaderboard();
+
+    const [selectedUser, setSelectedUser] = useState<LeaderboardEntry | null>(null);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+    const handleUserClick = (user: LeaderboardEntry) => {
+        setSelectedUser(user);
+        setIsSheetOpen(true);
+    };
 
     // Redirect if not authenticated
     useEffect(() => {
@@ -112,6 +123,7 @@ export default function LeaderboardPage() {
                             <LeaderboardPodium
                                 topThree={leaderboard.topThree}
                                 currentUserId={user.id}
+                                onUserClick={handleUserClick}
                             />
 
                             {/* Divider */}
@@ -131,6 +143,7 @@ export default function LeaderboardPage() {
                             <LeaderboardList
                                 entries={leaderboard.restOfList}
                                 currentUserId={user.id}
+                                onUserClick={handleUserClick}
                             />
 
                             {/* Current User Rank - Inline in content flow */}
@@ -147,6 +160,14 @@ export default function LeaderboardPage() {
                     )}
                 </main>
             </div>
+
+            {/* User Detail Sheet */}
+            <UserDetailSheet
+                userId={selectedUser?.user_id || null}
+                userInfo={selectedUser}
+                isOpen={isSheetOpen}
+                onClose={() => setIsSheetOpen(false)}
+            />
         </div>
     );
 }

@@ -5,6 +5,7 @@ import { LeaderboardEntry } from "@/lib/services/leaderboard.service";
 interface LeaderboardListProps {
     entries: LeaderboardEntry[];
     currentUserId?: string;
+    onUserClick?: (entry: LeaderboardEntry) => void;
 }
 
 /**
@@ -14,6 +15,7 @@ interface LeaderboardListProps {
 export default function LeaderboardList({
     entries,
     currentUserId,
+    onUserClick,
 }: LeaderboardListProps) {
     if (entries.length === 0) return null;
 
@@ -33,9 +35,10 @@ export default function LeaderboardList({
                     return (
                         <div
                             key={entry.user_id}
-                            className={`flex items-center px-4 py-3 border-b border-gray-100 last:border-b-0 transition-all duration-300 ${isCurrentUser
-                                    ? "bg-primary/5 border-l-4 border-l-primary"
-                                    : "hover:bg-gray-50"
+                            onClick={() => onUserClick?.(entry)}
+                            className={`flex items-center px-4 py-3 border-b border-gray-100 last:border-b-0 transition-all duration-300 cursor-pointer ${isCurrentUser
+                                ? "bg-primary/5 border-l-4 border-l-primary"
+                                : "hover:bg-gray-50 active:bg-gray-100"
                                 }`}
                             style={{
                                 animationDelay: `${(index + 3) * 0.05}s`,
@@ -43,8 +46,8 @@ export default function LeaderboardList({
                         >
                             {/* Rank Badge */}
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${isCurrentUser
-                                    ? "bg-primary text-white"
-                                    : "bg-gray-100 text-text-dark"
+                                ? "bg-primary text-white"
+                                : "bg-gray-100 text-text-dark"
                                 }`}>
                                 <span className="text-sm font-bold">{entry.rank}</span>
                             </div>

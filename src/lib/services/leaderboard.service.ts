@@ -200,4 +200,25 @@ export const leaderboardService = {
         }
         return calories.toLocaleString()
     },
+
+    /**
+     * Get recent activities for a specific user
+     * @param userId - User ID to fetch activities for
+     * @param limit - Number of activities to return (default: 10)
+     */
+    async getUserRecentActivities(userId: string, limit: number = 10) {
+        const supabase = createClient()
+
+        const { data, error } = await supabase
+            .from('activities')
+            .select('*')
+            .eq('user_id', userId)
+            .order('activity_date', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(limit)
+
+        if (error) throw error
+
+        return data
+    },
 }

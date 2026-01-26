@@ -5,6 +5,7 @@ import { LeaderboardEntry } from "@/lib/services/leaderboard.service";
 interface LeaderboardPodiumProps {
     topThree: LeaderboardEntry[];
     currentUserId?: string;
+    onUserClick?: (entry: LeaderboardEntry) => void;
 }
 
 /**
@@ -15,6 +16,7 @@ interface LeaderboardPodiumProps {
 export default function LeaderboardPodium({
     topThree,
     currentUserId,
+    onUserClick,
 }: LeaderboardPodiumProps) {
     if (topThree.length === 0) return null;
 
@@ -79,7 +81,8 @@ export default function LeaderboardPodium({
                     return (
                         <div
                             key={entry.user_id}
-                            className={`flex flex-col items-center transition-all duration-500 ${actualRank === 1 ? "order-2" : actualRank === 2 ? "order-1" : "order-3"
+                            onClick={() => onUserClick?.(entry)}
+                            className={`flex flex-col items-center transition-all duration-500 cursor-pointer hover:scale-105 ${actualRank === 1 ? "order-2" : actualRank === 2 ? "order-1" : "order-3"
                                 }`}
                             style={{
                                 animationDelay: `${index * 0.1}s`,

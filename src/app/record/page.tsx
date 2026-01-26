@@ -67,7 +67,7 @@ export default function RecordPage() {
     };
 
     const handleCaloriesChange = (delta: number) => {
-        const newValue = Math.max(10, Math.min(1000, calories + delta));
+        const newValue = Math.max(10, calories + delta);
         setCalories(newValue);
         setCaloriesInput(String(newValue));
     };
@@ -86,8 +86,8 @@ export default function RecordPage() {
             return;
         }
 
-        if (calories < 10 || calories > 1000) {
-            setError('Calories must be between 10-1000');
+        if (calories < 10) {
+            setError('Calories must be at least 10');
             setShake(true);
             setTimeout(() => setShake(false), 500);
             return;
@@ -313,13 +313,12 @@ export default function RecordPage() {
                                         onChange={(e) => setCaloriesInput(e.target.value)}
                                         onBlur={(e) => {
                                             const val = Number(e.target.value);
-                                            const clamped = Math.max(10, Math.min(1000, isNaN(val) ? 10 : val));
+                                            const clamped = Math.max(10, isNaN(val) ? 10 : val);
                                             setCalories(clamped);
                                             setCaloriesInput(String(clamped));
                                         }}
                                         className="w-24 text-center text-4xl font-black text-primary bg-transparent border-none focus:outline-none focus:ring-0"
                                         min={10}
-                                        max={1000}
                                     />
                                 </div>
                                 <p className="text-center text-sm text-gray-400 mt-1">calories</p>
@@ -334,7 +333,7 @@ export default function RecordPage() {
                         </div>
 
                         <p className="text-center text-xs text-gray-400 mt-3">
-                            Range: 10 - 1,000 cal
+                            Range: Min 10 cal
                         </p>
                     </section>
 

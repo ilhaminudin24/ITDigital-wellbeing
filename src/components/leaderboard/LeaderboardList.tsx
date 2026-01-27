@@ -52,10 +52,20 @@ export default function LeaderboardList({
                                 <span className="text-sm font-bold">{entry.rank}</span>
                             </div>
 
-                            {/* Fire Icon */}
-                            <span className="material-symbols-outlined text-orange-500 text-lg mr-2 filled">
-                                local_fire_department
-                            </span>
+                            {/* Avatar */}
+                            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200 mr-3 shrink-0">
+                                {entry.avatar_url ? (
+                                    <img
+                                        src={entry.avatar_url}
+                                        alt={entry.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold">
+                                        {entry.name.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Name */}
                             <div className="flex-1 min-w-0">
@@ -72,6 +82,9 @@ export default function LeaderboardList({
 
                             {/* Calories */}
                             <div className="flex items-center gap-1 ml-2">
+                                <span className="material-symbols-outlined text-orange-500 text-lg filled">
+                                    local_fire_department
+                                </span>
                                 <span className={`font-bold ${isCurrentUser ? "text-primary" : "text-text-dark"
                                     }`}>
                                     {formatCalories(entry.total_calories)}

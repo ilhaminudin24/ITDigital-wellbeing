@@ -10,9 +10,11 @@ interface ActivityItemProps {
     title: string;
     calories: number;
     distance?: number;
+    activityType?: string;
     photo?: string;
     isLast?: boolean;
     onClick?: () => void;
+    onPhotoClick?: (photoUrl: string) => void;
 }
 
 export default function ActivityItem({
@@ -20,10 +22,21 @@ export default function ActivityItem({
     title = "BSD Green Office Park",
     calories = 350,
     distance,
+    activityType,
     photo,
     isLast = false,
     onClick,
+    onPhotoClick,
 }: ActivityItemProps) {
+    // Helper to get icon based on activity type
+    const getActivityIcon = (type?: string) => {
+        const t = type?.toLowerCase() || "";
+        if (t.includes("run") || t.includes("lari")) return "directions_run";
+        if (t.includes("walk") || t.includes("jalan")) return "directions_walk";
+        if (t.includes("cycl") || t.includes("sepeda")) return "directions_bike";
+        return "fitness_center";
+    };
+
     return (
         <article
             onClick={onClick}
@@ -45,11 +58,17 @@ export default function ActivityItem({
                 <h3 className="font-bold text-text-dark text-sm truncate mb-0.5">
                     {title}
                 </h3>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     {distance !== undefined && (
                         <span className="text-xs text-text-muted flex items-center gap-1">
                             <span className="material-symbols-outlined !text-[14px]">straighten</span>
                             {distance} km
+                        </span>
+                    )}
+                    {activityType && (
+                        <span className="text-xs text-text-muted flex items-center gap-1">
+                            <span className="material-symbols-outlined !text-[14px]">{getActivityIcon(activityType)}</span>
+                            {activityType}
                         </span>
                     )}
                     <span className="text-xs text-text-muted flex items-center gap-1">
@@ -61,7 +80,13 @@ export default function ActivityItem({
 
             {/* Photo Thumbnail (if available) */}
             {photo && (
-                <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-gray-200">
+                <div
+                    className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-gray-200 transition-transform active:scale-95"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onPhotoClick?.(photo);
+                    }}
+                >
                     <img src={photo} alt="" className="w-full h-full object-cover" />
                 </div>
             )}

@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { leaderboardService, LeaderboardEntry } from "@/lib/services/leaderboard.service";
 import ActivityItem from "@/components/history/ActivityItem";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
 
 interface UserDetailProps {
     userId: string | null;
@@ -20,6 +22,20 @@ export default function UserDetailSheet({ userId, userInfo, isOpen, onClose }: U
     const startY = useRef<number | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const [error, setError] = useState<string | null>(null);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [photoIndex, setPhotoIndex] = useState(0);
+
+    // Filter activities with photos for the lightbox slides
+    const startSlides = activities.filter(a => a.photo).map(a => ({ src: a.photo }));
+
+    // Function to handle photo click
+    const handlePhotoClick = (photoUrl: string) => {
+        const index = startSlides.findIndex(s => s.src === photoUrl);
+        if (index >= 0) {
+            setPhotoIndex(index);
+            setLightboxOpen(true);
+        }
+    };
 
     // Fetch activities when user changes
     useEffect(() => {
@@ -44,6 +60,7 @@ export default function UserDetailSheet({ userId, userInfo, isOpen, onClose }: U
                         },
                         calories: act.calories,
                         distance: act.distance,
+                        activityType: act.activity_type,
                         photo: act.photo_url,
                         location: act.location
                     };
@@ -225,6 +242,7 @@ export default function UserDetailSheet({ userId, userInfo, isOpen, onClose }: U
                                     key={activity.id || index}
                                     {...activity}
                                     isLast={index === activities.length - 1}
+                                    onPhotoClick={handlePhotoClick}
                                 // Make it non-clickable/read-only visually if desired, 
                                 // or just don't pass onClick to make it static
                                 />
@@ -236,6 +254,13 @@ export default function UserDetailSheet({ userId, userInfo, isOpen, onClose }: U
                     <div className="h-6 bg-white"></div>
                 </div>
             </div>
+
+            <Lightbox
+                open={lightboxOpen}
+                close={() => setLightboxOpen(false)}
+                index={photoIndex}
+                slides={startSlides}
+            />
         </div>
     );
 }

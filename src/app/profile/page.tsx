@@ -184,7 +184,7 @@ export default function Profile() {
                         </button>
 
                         <h2 className="mb-1 text-2xl font-extrabold text-primary">{profile?.name || 'Coworker'}</h2>
-                        <p className="mb-2 text-sm text-gray-500">{user?.email}</p>
+
                         <p className="mb-5 font-medium text-gray-500">IT & Digital Team</p>
                         <div className="flex flex-wrap justify-center w-full gap-2">
                             <span className="px-4 py-2 text-xs font-extrabold uppercase tracking-wide shadow-sm rounded-xl bg-accent text-primary">

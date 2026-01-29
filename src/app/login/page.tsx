@@ -877,7 +877,7 @@ function LoginContent() {
 
                             <div className="mt-4 flex flex-col items-center gap-4 text-center">
                                 <p className="text-xs text-slate-500">
-                                    Belum punya akun? Hubungi admin IT untuk mendapatkan akses.
+                                    Belum punya akun? Hubungi Ilham Aminudin untuk mendapatkan akses.
                                 </p>
                                 <p className="text-xs text-slate-400">
                                     By logging in, you agree to the{" "}

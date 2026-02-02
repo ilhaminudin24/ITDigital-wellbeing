@@ -342,11 +342,14 @@ export default function RecordPage() {
 
                     {/* Photo Upload Section */}
                     <section className={clsx("flex flex-col gap-2", shake && "animate-shake")}>
+                        <label className="block text-sm font-medium text-gray-500 mb-1 ml-1">
+                            Upload Activity Photo <span className="text-red-500">*</span>
+                        </label>
                         <div
                             onClick={() => !photo && fileInputRef.current?.click()}
                             className={clsx(
                                 "relative w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden cursor-pointer",
-                                photo ? "h-48 border-transparent" : "h-32 border-gray-300 hover:border-primary hover:bg-blue-50/50"
+                                photo ? "h-48 border-transparent" : error && !photo ? "h-32 border-red-400 bg-red-50/50 hover:border-red-500" : "h-32 border-gray-300 hover:border-primary hover:bg-blue-50/50"
                             )}
                         >
                             <input
@@ -371,9 +374,9 @@ export default function RecordPage() {
                                     </button>
                                 </>
                             ) : (
-                                <div className="flex flex-col items-center gap-2 text-gray-400">
+                                <div className={clsx("flex flex-col items-center gap-2", error && !photo ? "text-red-400" : "text-gray-400")}>
                                     <span className="material-symbols-outlined text-4xl">add_a_photo</span>
-                                    <span className="text-sm font-medium">Upload Activity Photo</span>
+                                    <span className="text-sm font-medium">Upload Activity Photo (Required)</span>
                                 </div>
                             )}
                         </div>

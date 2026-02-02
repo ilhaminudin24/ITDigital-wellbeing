@@ -38,6 +38,9 @@ export default function RecordPage() {
         { value: 'Gym', label: 'Gym/Fitness' },
         { value: 'Yoga', label: 'Yoga' },
         { value: 'Aerobics', label: 'Aerobics/Zumba' },
+        { value: 'Archery', label: 'Archery (Panahan)' },
+        { value: 'TableTennis', label: 'Table Tennis (Tenis Meja)' },
+        { value: 'Weightlifting', label: 'Weightlifting (Angkat Beban)' },
     ];
 
     // Redirect if not authenticated
@@ -100,8 +103,8 @@ export default function RecordPage() {
             return;
         }
 
-        if (distance <= 0 || distance > 50) {
-            setError('Distance must be between 0.1-50 km');
+        if (distance <= 0 || distance > 200) {
+            setError('Distance must be between 0.1-200 km');
             setShake(true);
             setTimeout(() => setShake(false), 500);
             return;
@@ -266,10 +269,10 @@ export default function RecordPage() {
                                     <input
                                         type="number"
                                         value={distance}
-                                        onChange={(e) => setDistance(Math.max(0.1, Math.min(50, Number(e.target.value))))}
+                                        onChange={(e) => setDistance(Math.max(0.1, Math.min(200, Number(e.target.value))))}
                                         className="w-24 text-center text-4xl font-black text-primary bg-transparent border-none focus:outline-none focus:ring-0"
                                         min={0.1}
-                                        max={50}
+                                        max={200}
                                         step={0.1}
                                     />
                                     <span className="text-xl font-bold text-primary/70 ml-1">km</span>
@@ -278,7 +281,7 @@ export default function RecordPage() {
                             </div>
                             <button
                                 type="button"
-                                onClick={() => setDistance(Math.min(50, Math.round((distance + 0.5) * 10) / 10))}
+                                onClick={() => setDistance(Math.min(200, Math.round((distance + 0.5) * 10) / 10))}
                                 className="w-14 h-14 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all flex items-center justify-center text-primary font-bold text-2xl"
                             >
                                 +
@@ -286,7 +289,7 @@ export default function RecordPage() {
                         </div>
 
                         <p className="text-center text-xs text-gray-400 mt-3">
-                            Range: 0.1 - 50 km
+                            Range: 0.1 - 200 km
                         </p>
                     </section>
 

@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  */
 export async function middleware(request: NextRequest) {
     // Define protected routes that require authentication
-    const protectedRoutes = ['/dashboard', '/record', '/history', '/report', '/profile']
+    const protectedRoutes = ['/dashboard', '/record', '/history', '/report', '/profile', '/admin']
     const isProtectedRoute = protectedRoutes.some(route =>
         request.nextUrl.pathname.startsWith(route)
     )

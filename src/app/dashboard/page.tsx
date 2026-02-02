@@ -8,6 +8,8 @@ import Logo from "@/components/ui/Logo";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useProfile } from "@/lib/hooks/useProfile";
 import { useActivities } from "@/lib/hooks/useActivities";
+import { useAdmin } from "@/lib/hooks/useAdmin";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 export default function Dashboard() {
     const router = useRouter();
@@ -73,7 +75,8 @@ export default function Dashboard() {
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 items-center">
+                        <NotificationBell />
                         <button
                             onClick={() => router.push('/profile')}
                             className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-primary"

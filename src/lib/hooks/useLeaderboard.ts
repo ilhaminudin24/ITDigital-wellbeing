@@ -57,8 +57,8 @@ export function useLeaderboard(): UseLeaderboardReturn {
                 return
             }
 
-            // Fetch full leaderboard
-            const leaderboard = await leaderboardService.getLeaderboard(user.id, 10)
+            // Fetch full leaderboard (limit 100 to show all users)
+            const leaderboard = await leaderboardService.getLeaderboard(user.id, 100)
 
             setState({
                 leaderboard,

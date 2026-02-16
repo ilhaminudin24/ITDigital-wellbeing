@@ -1,1 +1,3 @@
 $env:NEXT_PUBLIC_SUPABASE_URL="https://jipeqeqiugokhcxmqvgk.supabase.co"; $env:SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppcGVxZXFpdWdva2hjeG1xdmdrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODgzNjI0NSwiZXhwIjoyMDg0NDEyMjQ1fQ.nC8CUU-cvzNdgMX9MBb-KmkWT4B4m0i95_hNEUC1Wfo"; npx ts-node scripts/provision-users.ts scripts/sample-users.csv
+
+$env:NEXT_PUBLIC_SUPABASE_URL="https://jipeqeqiugokhcxmqvgk.supabase.co"; $env:SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppcGVxZXFpdWdva2hjeG1xdmdrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODgzNjI0NSwiZXhwIjoyMDg0NDEyMjQ1fQ.nC8CUU-cvzNdgMX9MBb-KmkWT4B4m0i95_hNEUC1Wfo"; npx tsx scripts/provision-users.ts scripts/sample-users.csv

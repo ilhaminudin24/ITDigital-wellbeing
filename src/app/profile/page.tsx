@@ -15,7 +15,17 @@ import {
 
 export default function Profile() {
     const router = useRouter();
-    const { user, isLoading: authLoading, signOut } = useAuth();
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [passwordSuccess, setPasswordSuccess] = useState(false);
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+    const { user, isLoading: authLoading, signOut, changePassword } = useAuth();
     const { profile, isLoading: profileLoading, updateProfile, uploadAvatar, targets } = useProfile();
     const { yearlyCalories } = useActivities();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +116,56 @@ export default function Profile() {
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+    };
+
+    const handleChangePassword = async () => {
+        setPasswordError(null);
+        setPasswordSuccess(false);
+
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+            setPasswordError('Mohon isi semua field');
+            return;
+        }
+        if (newPassword.length < 6) {
+            setPasswordError('Password baru minimal 6 karakter');
+            return;
+        }
+        if (newPassword !== confirmNewPassword) {
+            setPasswordError('Password baru tidak cocok');
+            return;
+        }
+
+        setIsSavingPassword(true);
+        const { success, errorMessage } = await changePassword(currentPassword, newPassword);
+        setIsSavingPassword(false);
+
+        if (success) {
+            setPasswordSuccess(true);
+            setPasswordError(null);
+            // Auto-collapse after 2 seconds
+            setTimeout(() => {
+                setIsChangingPassword(false);
+                setPasswordSuccess(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmNewPassword('');
+                setShowCurrentPassword(false);
+                setShowNewPassword(false);
+            }, 2000);
+        } else {
+            setPasswordError(errorMessage || 'Gagal mengubah password');
+        }
+    };
+
+    const handleCancelChangePassword = () => {
+        setIsChangingPassword(false);
+        setPasswordError(null);
+        setPasswordSuccess(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setShowCurrentPassword(false);
+        setShowNewPassword(false);
     };
 
     // Calculate progress
@@ -331,6 +391,146 @@ export default function Profile() {
                                         <p className="text-xs text-gray-400">Age</p>
                                         <p className="font-bold text-gray-700">{profile?.age || 30} years</p>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Change Password Section */}
+                    <div className="p-6 bg-white shadow-sm rounded-3xl border border-gray-100">
+                        <button
+                            onClick={() => setIsChangingPassword(!isChangingPassword)}
+                            className="flex items-center justify-between w-full"
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-primary text-xl">lock</span>
+                                <h3 className="text-lg font-extrabold text-primary">Change Password</h3>
+                            </div>
+                            <span className={`material-symbols-outlined text-gray-400 transition-transform duration-200 ${isChangingPassword ? 'rotate-180' : ''}`}>
+                                expand_more
+                            </span>
+                        </button>
+
+                        {isChangingPassword && (
+                            <div className="mt-5 flex flex-col gap-4">
+                                {/* Success Message */}
+                                {passwordSuccess && (
+                                    <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                        Password berhasil diubah!
+                                    </div>
+                                )}
+
+                                {/* Error Message */}
+                                {passwordError && (
+                                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px]">error</span>
+                                        {passwordError}
+                                    </div>
+                                )}
+
+                                {/* Current Password */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-gray-500">Password Lama</label>
+                                    <div className="relative">
+                                        <input
+                                            type={showCurrentPassword ? "text" : "password"}
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            placeholder="Masukkan password lama"
+                                            className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm focus:border-primary focus:outline-none pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">
+                                                {showCurrentPassword ? "visibility_off" : "visibility"}
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* New Password */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-gray-500">Password Baru</label>
+                                    <div className="relative">
+                                        <input
+                                            type={showNewPassword ? "text" : "password"}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Minimal 6 karakter"
+                                            className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm focus:border-primary focus:outline-none pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">
+                                                {showNewPassword ? "visibility_off" : "visibility"}
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Confirm New Password */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-gray-500">Konfirmasi Password Baru</label>
+                                    <input
+                                        type="password"
+                                        value={confirmNewPassword}
+                                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                        placeholder="Ulangi password baru"
+                                        className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
+                                    />
+                                </div>
+
+                                {/* Validation Checklist */}
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                                    <ul className="text-xs text-blue-700 space-y-1.5">
+                                        <li className="flex items-center gap-2">
+                                            <span className={`material-symbols-outlined text-[14px] ${newPassword.length >= 6 ? 'text-green-600' : 'text-blue-400'}`}>
+                                                {newPassword.length >= 6 ? 'check_circle' : 'radio_button_unchecked'}
+                                            </span>
+                                            Minimal 6 karakter
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className={`material-symbols-outlined text-[14px] ${newPassword === confirmNewPassword && confirmNewPassword.length > 0 ? 'text-green-600' : 'text-blue-400'}`}>
+                                                {newPassword === confirmNewPassword && confirmNewPassword.length > 0 ? 'check_circle' : 'radio_button_unchecked'}
+                                            </span>
+                                            Password cocok
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-3 mt-1">
+                                    <button
+                                        onClick={handleCancelChangePassword}
+                                        disabled={isSavingPassword}
+                                        className="flex-1 py-2.5 rounded-xl border border-gray-300 font-bold text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleChangePassword}
+                                        disabled={isSavingPassword || newPassword.length < 6 || newPassword !== confirmNewPassword || !currentPassword}
+                                        className="flex-1 py-2.5 rounded-xl bg-primary font-bold text-sm text-white hover:bg-[#004f93] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    >
+                                        {isSavingPassword ? (
+                                            <>
+                                                <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="material-symbols-outlined text-[16px]">lock</span>
+                                                Save Password
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
                         )}

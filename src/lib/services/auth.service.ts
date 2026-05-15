@@ -117,6 +117,54 @@ export const authService = {
     },
 
     /**
+     * Change password with current password verification
+     * Unlike updatePassword(), this verifies the old password first
+     */
+    async changePassword(
+        email: string,
+        currentPassword: string,
+        newPassword: string
+    ): Promise<{
+        success: boolean
+        error: { message: string; code?: string } | null
+    }> {
+        const supabase = createClient()
+
+        // Step 1: Verify current password by re-authenticating
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email,
+            password: currentPassword,
+        })
+
+        if (verifyError) {
+            return {
+                success: false,
+                error: { message: 'Password lama salah', code: 'INVALID_CURRENT_PASSWORD' }
+            }
+        }
+
+        // Step 2: Update to new password
+        const { error: updateError } = await supabase.auth.updateUser({
+            password: newPassword,
+        })
+
+        if (updateError) {
+            if (updateError.message.includes('same_password') || updateError.message.includes('should be different')) {
+                return {
+                    success: false,
+                    error: { message: 'Password baru tidak boleh sama dengan password lama', code: 'SAME_PASSWORD' }
+                }
+            }
+            return {
+                success: false,
+                error: { message: 'Gagal mengubah password: ' + updateError.message }
+            }
+        }
+
+        return { success: true, error: null }
+    },
+
+    /**
      * Sign out current user
      */
     async signOut(): Promise<void> {

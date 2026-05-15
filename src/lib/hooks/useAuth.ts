@@ -15,6 +15,7 @@ interface AuthState {
 interface UseAuthReturn extends AuthState {
     signIn: (identifier: string, password: string) => Promise<boolean>
     updatePassword: (newPassword: string) => Promise<boolean>
+    changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; errorMessage?: string }>
     signOut: () => Promise<void>
     clearError: () => void
 }
@@ -104,6 +105,25 @@ export function useAuth(): UseAuthReturn {
         return success
     }, [])
 
+    // Change password (with current password verification)
+    const changePassword = useCallback(async (
+        currentPassword: string,
+        newPassword: string
+    ): Promise<{ success: boolean; errorMessage?: string }> => {
+        setState(prev => ({ ...prev, isLoading: true, error: null }))
+
+        const email = state.user?.email
+        if (!email) {
+            setState(prev => ({ ...prev, isLoading: false, error: 'User session not found' }))
+            return { success: false, errorMessage: 'User session not found' }
+        }
+
+        const { success, error } = await authService.changePassword(email, currentPassword, newPassword)
+
+        setState(prev => ({ ...prev, isLoading: false, error: error?.message || null }))
+        return { success, errorMessage: error?.message }
+    }, [state.user?.email])
+
     // Sign out
     const signOut = useCallback(async (): Promise<void> => {
         setState(prev => ({ ...prev, isLoading: true, error: null }))
@@ -134,6 +154,7 @@ export function useAuth(): UseAuthReturn {
         ...state,
         signIn,
         updatePassword,
+        changePassword,
         signOut,
         clearError,
     }

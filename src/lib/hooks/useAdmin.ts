@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { adminService, AdminActivity, AdminStats } from '@/lib/services/admin.service'
+import { adminService, AdminActivity, AdminStats, AdminUser } from '@/lib/services/admin.service'
 import { useAuth } from './useAuth'
 
 interface AdminState {
     isAdmin: boolean
     isLoading: boolean
     activities: AdminActivity[]
+    users: AdminUser[]
     stats: AdminStats | null
     error: string | null
 }
@@ -15,7 +16,9 @@ interface AdminState {
 interface UseAdminReturn extends AdminState {
     refetchActivities: () => Promise<void>
     refetchStats: () => Promise<void>
+    fetchUsers: () => Promise<void>
     rejectActivity: (activityId: string, reason: string) => Promise<boolean>
+    resetUserPassword: (userId: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
 }
 
 /**
@@ -28,6 +31,7 @@ export function useAdmin(): UseAdminReturn {
         isAdmin: false,
         isLoading: true,
         activities: [],
+        users: [],
         stats: null,
         error: null
     })
@@ -87,8 +91,21 @@ export function useAdmin(): UseAdminReturn {
         if (state.isAdmin && !state.isLoading) {
             fetchActivities()
             fetchStats()
+            fetchUsers()
         }
     }, [state.isAdmin, state.isLoading, fetchActivities, fetchStats])
+
+    // Fetch users
+    const fetchUsers = useCallback(async () => {
+        if (!user || !state.isAdmin) return
+
+        try {
+            const users = await adminService.getAllUsers()
+            setState(prev => ({ ...prev, users }))
+        } catch (error) {
+            console.error('Error fetching users:', error)
+        }
+    }, [user, state.isAdmin])
 
     // Reject activity
     const rejectActivity = useCallback(async (activityId: string, reason: string): Promise<boolean> => {
@@ -118,10 +135,29 @@ export function useAdmin(): UseAdminReturn {
         }
     }, [user])
 
+    // Reset user password (admin action)
+    const resetUserPassword = useCallback(async (
+        userId: string,
+        newPassword: string
+    ): Promise<{ success: boolean; error?: string }> => {
+        if (!user) return { success: false, error: 'Not authenticated' }
+
+        const result = await adminService.resetUserPassword(userId, newPassword)
+
+        if (result.success) {
+            // Refresh user list to update password_changed status
+            await fetchUsers()
+        }
+
+        return result
+    }, [user, fetchUsers])
+
     return {
         ...state,
         refetchActivities: fetchActivities,
         refetchStats: fetchStats,
-        rejectActivity
+        fetchUsers,
+        rejectActivity,
+        resetUserPassword
     }
 }

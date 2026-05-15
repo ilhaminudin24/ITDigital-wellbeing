@@ -21,6 +21,19 @@ export interface AdminStats {
 }
 
 /**
+ * Admin User - User info for admin management
+ */
+export interface AdminUser {
+    user_id: string
+    name: string
+    nik: string | null
+    email: string | null
+    password_changed: boolean
+    avatar_url: string | null
+    is_admin: boolean | null
+}
+
+/**
  * Admin Service
  * Handles admin operations for activity validation
  */
@@ -44,6 +57,56 @@ export const adminService = {
         }
 
         return data?.is_admin === true
+    },
+
+    /**
+     * Get all users for admin user management
+     */
+    async getAllUsers(): Promise<AdminUser[]> {
+        const supabase = createClient()
+
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('user_id, name, nik, email, password_changed, avatar_url, is_admin')
+            .order('name', { ascending: true })
+
+        if (error) {
+            console.error('Error fetching users:', error)
+            throw error
+        }
+
+        return (data || []) as AdminUser[]
+    },
+
+    /**
+     * Reset a user's password via server-side API route
+     * This calls /api/admin/reset-password which uses service_role key
+     * 
+     * @param userId - Target user's auth ID
+     * @param newPassword - The new password to set
+     */
+    async resetUserPassword(userId: string, newPassword: string): Promise<{
+        success: boolean
+        error?: string
+    }> {
+        try {
+            const response = await fetch('/api/admin/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, newPassword })
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                return { success: false, error: data.error || 'Failed to reset password' }
+            }
+
+            return { success: true }
+        } catch (error) {
+            console.error('Reset password error:', error)
+            return { success: false, error: 'Network error. Silakan coba lagi.' }
+        }
     },
 
     /**

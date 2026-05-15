@@ -8,8 +8,11 @@ import { useAdmin } from '@/lib/hooks/useAdmin'
 import { useAuth } from '@/lib/hooks/useAuth'
 import AdminActivityCard from '@/components/admin/AdminActivityCard'
 import RejectModal from '@/components/admin/RejectModal'
+import ResetPasswordModal from '@/components/admin/ResetPasswordModal'
 import AdminFilters, { FilterState, GroupBy } from '@/components/admin/AdminFilters'
-import type { AdminActivity } from '@/lib/services/admin.service'
+import type { AdminActivity, AdminUser } from '@/lib/services/admin.service'
+
+type AdminTab = 'activities' | 'users'
 
 export default function AdminPage() {
     const router = useRouter()
@@ -18,16 +21,28 @@ export default function AdminPage() {
         isAdmin,
         isLoading: adminLoading,
         activities,
+        users,
         stats,
         error,
         rejectActivity,
-        refetchActivities
+        refetchActivities,
+        resetUserPassword
     } = useAdmin()
 
+    // Tab state
+    const [activeTab, setActiveTab] = useState<AdminTab>('activities')
+
+    // Activity rejection state
     const [selectedActivity, setSelectedActivity] = useState<AdminActivity | null>(null)
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
     const [isRejecting, setIsRejecting] = useState(false)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+    // User password reset state
+    const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false)
+    const [isResetting, setIsResetting] = useState(false)
+    const [userSearchQuery, setUserSearchQuery] = useState('')
 
     // Filter state
     const [filters, setFilters] = useState<FilterState>({
@@ -41,13 +56,13 @@ export default function AdminPage() {
 
     // Get unique users and activity types for filter dropdowns
     const uniqueUsers = useMemo(() => {
-        const users = new Map<string, { id: string; name: string }>()
+        const usersMap = new Map<string, { id: string; name: string }>()
         activities.forEach(a => {
-            if (!users.has(a.user_id)) {
-                users.set(a.user_id, { id: a.user_id, name: a.user_name })
+            if (!usersMap.has(a.user_id)) {
+                usersMap.set(a.user_id, { id: a.user_id, name: a.user_name })
             }
         })
-        return Array.from(users.values()).sort((a, b) => a.name.localeCompare(b.name))
+        return Array.from(usersMap.values()).sort((a, b) => a.name.localeCompare(b.name))
     }, [activities])
 
     const uniqueActivityTypes = useMemo(() => {
@@ -168,6 +183,18 @@ export default function AdminPage() {
         return sortedGroups
     }, [filteredActivities, filters.groupBy])
 
+    // Filter users for User Management tab
+    const filteredUsers = useMemo(() => {
+        if (!userSearchQuery.trim()) return users
+
+        const query = userSearchQuery.toLowerCase()
+        return users.filter(u =>
+            u.name.toLowerCase().includes(query) ||
+            (u.nik && u.nik.toLowerCase().includes(query)) ||
+            (u.email && u.email.toLowerCase().includes(query))
+        )
+    }, [users, userSearchQuery])
+
     // Handle reject button click
     const handleRejectClick = (activity: AdminActivity) => {
         setSelectedActivity(activity)
@@ -187,6 +214,31 @@ export default function AdminPage() {
             setSelectedActivity(null)
             setSuccessMessage(`Activity dari ${selectedActivity.user_name} berhasil di-reject`)
             setTimeout(() => setSuccessMessage(null), 3000)
+        }
+    }
+
+    // Handle reset password button click
+    const handleResetPasswordClick = (targetUser: AdminUser) => {
+        setSelectedUser(targetUser)
+        setIsResetModalOpen(true)
+    }
+
+    // Handle reset password confirmation
+    const handleResetPasswordConfirm = async (newPassword: string) => {
+        if (!selectedUser) return
+
+        setIsResetting(true)
+        const result = await resetUserPassword(selectedUser.user_id, newPassword)
+        setIsResetting(false)
+
+        if (result.success) {
+            setIsResetModalOpen(false)
+            setSelectedUser(null)
+            setSuccessMessage(`Password ${selectedUser.name} berhasil di-reset`)
+            setTimeout(() => setSuccessMessage(null), 3000)
+        } else {
+            // Error is shown via the modal or service
+            setSuccessMessage(null)
         }
     }
 
@@ -236,7 +288,9 @@ export default function AdminPage() {
                         <Logo size="md" />
                         <div>
                             <h1 className="text-xl font-bold text-primary">Admin Panel</h1>
-                            <p className="text-sm text-slate-500">Activity Validation</p>
+                            <p className="text-sm text-slate-500">
+                                {activeTab === 'activities' ? 'Activity Validation' : 'User Management'}
+                            </p>
                         </div>
                     </div>
                     <button
@@ -250,63 +304,41 @@ export default function AdminPage() {
             </header>
 
             <main className="max-w-6xl mx-auto px-4 py-6">
-                {/* Stats Cards */}
-                {stats && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-blue-600">directions_run</span>
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-slate-900">{stats.totalActivities}</p>
-                                    <p className="text-xs text-slate-500">Total Activities</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-green-600">today</span>
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-slate-900">{stats.activitiesToday}</p>
-                                    <p className="text-xs text-slate-500">Today</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-purple-600">group</span>
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-slate-900">{stats.totalUsers}</p>
-                                    <p className="text-xs text-slate-500">Total Users</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-orange-600">filter_list</span>
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-slate-900">{filteredActivities.length}</p>
-                                    <p className="text-xs text-slate-500">Filtered</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Filters */}
-                <AdminFilters
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                    uniqueUsers={uniqueUsers}
-                    uniqueActivityTypes={uniqueActivityTypes}
-                />
+                {/* Tab Navigation */}
+                <div className="flex bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+                    <button
+                        onClick={() => setActiveTab('activities')}
+                        className={clsx(
+                            "flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold transition-colors",
+                            activeTab === 'activities'
+                                ? "bg-primary text-white"
+                                : "text-slate-600 hover:bg-gray-50"
+                        )}
+                    >
+                        <span className="material-symbols-outlined text-xl">directions_run</span>
+                        Activity Review
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={clsx(
+                            "flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold transition-colors",
+                            activeTab === 'users'
+                                ? "bg-primary text-white"
+                                : "text-slate-600 hover:bg-gray-50"
+                        )}
+                    >
+                        <span className="material-symbols-outlined text-xl">group</span>
+                        User Management
+                        <span className={clsx(
+                            "px-2 py-0.5 rounded-full text-xs font-bold",
+                            activeTab === 'users'
+                                ? "bg-white/20 text-white"
+                                : "bg-gray-200 text-gray-600"
+                        )}>
+                            {users.length}
+                        </span>
+                    </button>
+                </div>
 
                 {/* Success Message */}
                 {successMessage && (
@@ -330,61 +362,230 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {/* Activities List */}
-                <div className="space-y-4">
-                    {filteredActivities.length === 0 ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-                            <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">search_off</span>
-                            <p className="text-slate-500 mb-2">No activities found</p>
-                            <p className="text-sm text-slate-400">Try adjusting your filters</p>
-                            <button
-                                onClick={() => setFilters({
-                                    dateFilter: 'all',
-                                    customDate: '',
-                                    userFilter: '',
-                                    activityType: '',
-                                    searchQuery: '',
-                                    groupBy: 'date'
-                                })}
-                                className="mt-4 px-4 py-2 text-primary hover:bg-primary/5 rounded-lg transition-colors text-sm"
-                            >
-                                Clear all filters
-                            </button>
-                        </div>
-                    ) : (
-                        Object.entries(groupedActivities).map(([groupName, groupActivities]) => (
-                            <div key={groupName} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                {/* Group Header */}
-                                <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                {/* ========== ACTIVITY REVIEW TAB ========== */}
+                {activeTab === 'activities' && (
+                    <>
+                        {/* Stats Cards */}
+                        {stats && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                                     <div className="flex items-center gap-3">
-                                        <h2 className="font-semibold text-slate-900">{groupName}</h2>
-                                        <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full text-xs font-medium">
-                                            {groupActivities.length} activities
-                                        </span>
+                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-blue-600">directions_run</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-bold text-slate-900">{stats.totalActivities}</p>
+                                            <p className="text-xs text-slate-500">Total Activities</p>
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={refetchActivities}
-                                        className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                                        title="Refresh"
-                                    >
-                                        <span className="material-symbols-outlined text-slate-500 text-xl">refresh</span>
-                                    </button>
                                 </div>
-
-                                {/* Activities in Group */}
-                                <div className="divide-y divide-gray-100">
-                                    {groupActivities.map((activity) => (
-                                        <AdminActivityCard
-                                            key={activity.id}
-                                            activity={activity}
-                                            onReject={() => handleRejectClick(activity)}
-                                        />
-                                    ))}
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-green-600">today</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-bold text-slate-900">{stats.activitiesToday}</p>
+                                            <p className="text-xs text-slate-500">Today</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-purple-600">group</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-bold text-slate-900">{stats.totalUsers}</p>
+                                            <p className="text-xs text-slate-500">Total Users</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-orange-600">filter_list</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-bold text-slate-900">{filteredActivities.length}</p>
+                                            <p className="text-xs text-slate-500">Filtered</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        ))
-                    )}
-                </div>
+                        )}
+
+                        {/* Filters */}
+                        <AdminFilters
+                            filters={filters}
+                            onFiltersChange={setFilters}
+                            uniqueUsers={uniqueUsers}
+                            uniqueActivityTypes={uniqueActivityTypes}
+                        />
+
+                        {/* Activities List */}
+                        <div className="space-y-4">
+                            {filteredActivities.length === 0 ? (
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+                                    <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">search_off</span>
+                                    <p className="text-slate-500 mb-2">No activities found</p>
+                                    <p className="text-sm text-slate-400">Try adjusting your filters</p>
+                                    <button
+                                        onClick={() => setFilters({
+                                            dateFilter: 'all',
+                                            customDate: '',
+                                            userFilter: '',
+                                            activityType: '',
+                                            searchQuery: '',
+                                            groupBy: 'date'
+                                        })}
+                                        className="mt-4 px-4 py-2 text-primary hover:bg-primary/5 rounded-lg transition-colors text-sm"
+                                    >
+                                        Clear all filters
+                                    </button>
+                                </div>
+                            ) : (
+                                Object.entries(groupedActivities).map(([groupName, groupActivities]) => (
+                                    <div key={groupName} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                        {/* Group Header */}
+                                        <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <h2 className="font-semibold text-slate-900">{groupName}</h2>
+                                                <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full text-xs font-medium">
+                                                    {groupActivities.length} activities
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={refetchActivities}
+                                                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                                                title="Refresh"
+                                            >
+                                                <span className="material-symbols-outlined text-slate-500 text-xl">refresh</span>
+                                            </button>
+                                        </div>
+
+                                        {/* Activities in Group */}
+                                        <div className="divide-y divide-gray-100">
+                                            {groupActivities.map((activity) => (
+                                                <AdminActivityCard
+                                                    key={activity.id}
+                                                    activity={activity}
+                                                    onReject={() => handleRejectClick(activity)}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {/* ========== USER MANAGEMENT TAB ========== */}
+                {activeTab === 'users' && (
+                    <>
+                        {/* Search Bar */}
+                        <div className="mb-6">
+                            <div className="relative">
+                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
+                                <input
+                                    type="text"
+                                    value={userSearchQuery}
+                                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                                    placeholder="Cari berdasarkan nama, NIK, atau email..."
+                                    className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary shadow-sm"
+                                />
+                                {userSearchQuery && (
+                                    <button
+                                        onClick={() => setUserSearchQuery('')}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <span className="material-symbols-outlined text-xl">close</span>
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2 ml-1">
+                                Menampilkan {filteredUsers.length} dari {users.length} user
+                            </p>
+                        </div>
+
+                        {/* User List */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            {filteredUsers.length === 0 ? (
+                                <div className="p-8 text-center">
+                                    <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">person_search</span>
+                                    <p className="text-slate-500 mb-2">User tidak ditemukan</p>
+                                    <p className="text-sm text-slate-400">Coba kata kunci lain</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-gray-100">
+                                    {filteredUsers.map((targetUser) => (
+                                        <div
+                                            key={targetUser.user_id}
+                                            className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between gap-4"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                {/* Avatar */}
+                                                {targetUser.avatar_url ? (
+                                                    <img
+                                                        src={targetUser.avatar_url}
+                                                        alt={targetUser.name}
+                                                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                        <span className="text-sm font-bold text-primary">
+                                                            {targetUser.name.charAt(0).toUpperCase()}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Info */}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="font-semibold text-slate-900 truncate">{targetUser.name}</p>
+                                                        {targetUser.is_admin && (
+                                                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold uppercase">
+                                                                Admin
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
+                                                        {targetUser.nik && <span>NIK: {targetUser.nik}</span>}
+                                                        {targetUser.nik && targetUser.email && <span className="hidden sm:inline">•</span>}
+                                                        {targetUser.email && <span className="truncate">{targetUser.email}</span>}
+                                                    </div>
+                                                    <div className="mt-1">
+                                                        {targetUser.password_changed ? (
+                                                            <span className="inline-flex items-center gap-1 text-[11px] text-green-600 font-medium">
+                                                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                                                Password sudah diubah
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-medium">
+                                                                <span className="material-symbols-outlined text-[12px]">warning</span>
+                                                                Masih menggunakan password default
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Reset Password Button */}
+                                            <button
+                                                onClick={() => handleResetPasswordClick(targetUser)}
+                                                className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 border border-amber-200"
+                                            >
+                                                <span className="material-symbols-outlined text-base">lock_reset</span>
+                                                <span className="hidden sm:inline">Reset PW</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
             </main>
 
             {/* Reject Modal */}
@@ -396,6 +597,18 @@ export default function AdminPage() {
                 onCancel={() => {
                     setIsRejectModalOpen(false)
                     setSelectedActivity(null)
+                }}
+            />
+
+            {/* Reset Password Modal */}
+            <ResetPasswordModal
+                isOpen={isResetModalOpen}
+                user={selectedUser}
+                isLoading={isResetting}
+                onConfirm={handleResetPasswordConfirm}
+                onCancel={() => {
+                    setIsResetModalOpen(false)
+                    setSelectedUser(null)
                 }}
             />
         </div>

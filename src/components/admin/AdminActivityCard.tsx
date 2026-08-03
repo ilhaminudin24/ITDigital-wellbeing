@@ -41,7 +41,9 @@ export default function AdminActivityCard({ activity, onReject }: AdminActivityC
             'Futsal': 'sports_soccer',
             'Football': 'sports_soccer',
             'Badminton': 'sports_tennis',
-            'Basketball': 'sports_basketball'
+            'Basketball': 'sports_basketball',
+            'Tennis': 'sports_tennis',
+            'Padel': 'sports_tennis',
         }
         return icons[type] || 'directions_run'
     }

@@ -34,6 +34,14 @@ export default function ActivityItem({
         if (t.includes("run") || t.includes("lari")) return "directions_run";
         if (t.includes("walk") || t.includes("jalan")) return "directions_walk";
         if (t.includes("cycl") || t.includes("sepeda")) return "directions_bike";
+        if (t.includes("swim") || t.includes("renang")) return "pool";
+        if (t.includes("badminton") || t.includes("bulu")) return "sports_tennis";
+        if (t.includes("padel")) return "sports_tennis";
+        if (t.includes("tennis")) return "sports_tennis";
+        if (t.includes("basket")) return "sports_basketball";
+        if (t.includes("football") || t.includes("futsal") || t.includes("bola")) return "sports_soccer";
+        if (t.includes("yoga")) return "self_improvement";
+        if (t.includes("gym") || t.includes("fitness")) return "fitness_center";
         return "fitness_center";
     };
 

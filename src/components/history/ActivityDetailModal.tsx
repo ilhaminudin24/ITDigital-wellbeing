@@ -31,6 +31,8 @@ const getActivityIcon = (type?: string) => {
     if (t.includes('football') || t.includes('soccer') || t.includes('bola') || t.includes('futsal')) return 'sports_soccer';
     if (t.includes('basket')) return 'sports_basketball';
     if (t.includes('badminton') || t.includes('bulu')) return 'sports_tennis';
+    if (t.includes('padel')) return 'sports_tennis';
+    if (t.includes('tennis') && !t.includes('table')) return 'sports_tennis';
     return 'directions_walk'; // Default
 };
 

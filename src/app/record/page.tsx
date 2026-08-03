@@ -35,6 +35,8 @@ export default function RecordPage() {
         { value: 'Football', label: 'Football (Sepak Bola)' },
         { value: 'Badminton', label: 'Badminton (Bulu Tangkis)' },
         { value: 'Basketball', label: 'Basketball (Basket)' },
+        { value: 'Tennis', label: 'Tennis (Tenis Lapangan)' },
+        { value: 'Padel', label: 'Padel' },
         { value: 'Gym', label: 'Gym/Fitness' },
         { value: 'Yoga', label: 'Yoga' },
         { value: 'Aerobics', label: 'Aerobics/Zumba' },
